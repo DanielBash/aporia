@@ -75,3 +75,6 @@ class EventStack(db.Model, Timestamp):
 
     chat_id = db.Column(db.Integer, db.ForeignKey('chats.id', ondelete='CASCADE'), nullable=False)
     chat = db.relationship('Chat', back_populates='events')
+
+    finished = db.Column(db.Boolean, unique=False, default=False)
+    return_text = db.Column(db.Text)

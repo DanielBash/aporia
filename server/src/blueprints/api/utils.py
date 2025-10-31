@@ -1,10 +1,13 @@
+import datetime
 import secrets
 import hashlib
 import hmac
+import time
+
 from flask import jsonify
 from functools import wraps
 from models import User, Cluster, Message
-from app import SECRET_KEY
+from app import SECRET_KEY, db
 from flask import request
 import re
 
@@ -41,6 +44,9 @@ def token_required(f):
             return gen_response({'comment': 'Invalid auth token'}, status='ERROR', code=400)
         request.user = user
 
+        user.last_online = datetime.datetime.now()
+        db.session.commit()
+
         return f(*args, **kwargs)
     return check_token
 
@@ -67,3 +73,24 @@ def get_chat_as_dict(chat, max_messages):
             "content": message.text
         })
     return conversation
+
+def get_code_from_str(string):
+    oasis = string.split('```')
+    return oasis[1::2]
+
+def extract_code_metadata(code, default_id=1):
+    code_filtered = []
+
+    for i in range(len(code)):
+        if code[i].startswith('python'):
+            code[i] = code[i][6:]
+            code[i] = code[i].lstrip('\n')
+
+            lines = code[i].split('\n')
+            if len(lines[0].split(':')) > 0 and 'ID' in lines[0].upper():
+                try:
+                    run_comp_id = int(lines[0].split(':')[1].rstrip())
+                    code_filtered.append((run_comp_id, code[i]))
+                except Exception:
+                    code_filtered.append((default_id, code[i]))
+    return code_filtered
