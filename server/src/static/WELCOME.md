@@ -8,7 +8,8 @@
 
 ## Установка
 
-Скачать последнюю версию клиента можно [тут](/download)
+- Собранный клиент Windows [тут](/download)
+- Ссылка на github [тут](https://github.com/DanielBash/aporia)
 
 ## Архитектура
 

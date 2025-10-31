@@ -4,7 +4,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 
-SECRET_KEY = 'iAnA_1VKb6qTLMnIsYut1fmr97qzmnAyIm6Se9BxCikBTHuh7BWWXgwBxIZF4T8HMoYuWxD7vQSBaqbzB7n0wQ'
+SECRET_KEY = 'iBTHuh7BWWXgwBxIZF4T8HMoYuWxD7vQSBaqbzB7n0wQ'
 
 def create_app():
     global limiter
