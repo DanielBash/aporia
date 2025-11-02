@@ -14,10 +14,8 @@ class Api:
                 response = requests.get(url, json=d, headers=h, timeout=t)
             else:
                 response = requests.post(url, json=d, headers=h, timeout=t)
-            response.raise_for_status()
             return response.json()
         except Exception as e:
-            print(e)
             return {}
 
     def auth(self):
@@ -25,3 +23,12 @@ class Api:
 
     def info(self, token, id):
         return self.req('info', m='post', d={'user_token': token, 'user_id': id})
+
+    def create_chat(self, token, id, name):
+        return self.req('create_chat', m='post', d={'user_token': token, 'user_id': id, 'name': name})
+
+    def rename_chat(self, token, id, name, chat_id):
+        return self.req('edit_chat_name', m='post', d={'user_token': token, 'user_id': id, 'name': name, 'chat_id': chat_id})
+
+    def delete_chat(self, token, id, chat_id):
+        return self.req('delete_chat', m='post', d={'user_token': token, 'user_id': id, 'chat_id': chat_id})

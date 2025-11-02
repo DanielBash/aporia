@@ -65,7 +65,7 @@ class Config:
     open_window_shortcut = 'ctrl+shift+h'
     enable_shortcut = False
 
-    current_theme = 'light'
+    current_theme = 'dark'
     tile = 40
 
     def __init__(self):

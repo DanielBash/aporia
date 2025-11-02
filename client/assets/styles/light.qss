@@ -112,3 +112,35 @@ QListWidget:disabled {
     color: #999999;
     border: 1px solid #EEEEEE;
 }
+
+/* Q MENU */
+
+QMenu {
+    background-color: #ffffff;
+    border: 1px solid #dcdcdc;
+    border-radius: 4px;
+    padding: 4px;
+    color: #2b2b2b;
+    font-size: 13px;
+}
+
+QMenu::item {
+    padding: 6px 24px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background-color: #e6f0ff;
+    border-radius: 4px;
+}
+
+QMenu::separator {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 4px 6px;
+}
+
+QMenu::indicator {
+    width: 16px;
+    height: 16px;
+}

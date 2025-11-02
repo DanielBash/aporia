@@ -89,3 +89,30 @@ class Database:
         conn.close()
         data = self.api.info(c[1], c[0])['response']
         return data
+
+    def rename_chat(self, id, name):
+        conn = sqlite3.connect(self.path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sessions;")
+        c = cursor.fetchone()
+        conn.close()
+        data = self.api.rename_chat(c[1], c[0], name, id)
+        return data
+
+    def delete_chat(self, id):
+        conn = sqlite3.connect(self.path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sessions;")
+        c = cursor.fetchone()
+        conn.close()
+        data = self.api.delete_chat(c[1], c[0], id)
+        return data
+
+    def create_chat(self, name):
+        conn = sqlite3.connect(self.path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sessions;")
+        c = cursor.fetchone()
+        conn.close()
+        data = self.api.create_chat(c[1], c[0], name)
+        return data
