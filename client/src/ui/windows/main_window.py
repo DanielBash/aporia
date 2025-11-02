@@ -44,6 +44,7 @@ class MainWindow(QMainWindow):
         self.menu_opened = True
         self.fade_applied = False
         self.blur_needed = False
+        self.needs_destroy = False
 
         self.prompt = None
         self.gen_btn = None
@@ -221,6 +222,7 @@ class MainWindow(QMainWindow):
         self.update_thread.stop()
         self.hide()
         self.destroy()
+        self.needs_destroy = True
 
     def update_data(self, data):
         if not conf.api_auth:
