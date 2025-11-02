@@ -1,11 +1,12 @@
 import random
 import sys
-from PyQt6.QtWidgets import QApplication, QSystemTrayIcon
+from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QCursor, QIcon
 from PyQt6.QtCore import QTimer
 import keyboard
-from pynput import keyboard
-from config import Config as conf
+from PyQt6.uic.Compiler.qtproxies import QtGui
+
+from config import config as conf
 from src.ui.windows import main_window
 from src.database import Database
 from src.api import Api
@@ -19,36 +20,50 @@ class MainApp:
         self.app.setApplicationVersion(conf.application_version)
 
         self.window = None
-        self.setupTray()
         self.needWindow = False
-
-        if conf.enable_shortcut:
-            keyboard.add_hotkey(conf.open_window_shortcut, self.timeToShowWindow)
+        self.showWindowCenter = False
 
         self.windowNeeds = QTimer()
         self.windowNeeds.timeout.connect(self.showWindow)
         self.windowNeeds.start(100)
 
-        conf.db = Database()
-        conf.api = Api()
-        conf.notification_manager = Manager(conf)
-        conf.notification_manager.show_notification(title='Апория', text='Приложение запушено')
+        if conf.enable_shortcut:
+            keyboard.add_hotkey(conf.open_window_shortcut, self.timeToShowWindow)
+
+        self.setupTray()
+
+        conf.notification_manager.show_notification(title='Апория', text='Приложение запущено')
 
     def setupTray(self):
+        menu = QMenu()
+        exit_action = menu.addAction("Выключить")
+        open_action = menu.addAction("Открыть")
+        settings_action = menu.addAction("Настройки")
+
+        exit_action.triggered.connect(self.exit)
+        open_action.triggered.connect(self.timeToShowWindowCenter)
+        settings_action.triggered.connect(self.timeToShowWindowCenter)
+
         tray = QSystemTrayIcon(QIcon(conf.paths.icon('icon')), self.app)
         tray.activated.connect(self.tray)
+        tray.setContextMenu(menu)
         tray.show()
 
     def tray(self, q):
         if q == QSystemTrayIcon.ActivationReason.DoubleClick:
-            self.timeToShowWindow()
+            self.timeToShowWindowCenter()
 
     def showWindow(self):
         if not self.needWindow:
             return
-        if self.window is None or not self.window.isActiveWindow():
+        if self.window is None or self.window.needs_destroy:
             pos = QCursor.pos()
-            self.window = main_window.MainWindow(conf, (pos.x(), pos.y()))
+            screen = QApplication.primaryScreen()
+            if self.showWindowCenter:
+                cp =  screen.availableGeometry().center()
+                self.window = main_window.MainWindow(conf, (cp.x(), cp.y()))
+            else:
+                self.window = main_window.MainWindow(conf, (pos.x(), pos.y()))
             self.window.show()
             self.window.activateWindow()
             self.window.raise_()
@@ -56,9 +71,17 @@ class MainApp:
 
     def timeToShowWindow(self):
         self.needWindow = True
+        self.showWindowCenter = False
+
+    def timeToShowWindowCenter(self):
+        self.needWindow = True
+        self.showWindowCenter = True
 
     def run(self):
         sys.exit(self.app.exec())
+
+    def exit(self):
+        self.app.quit()
 
 
 if __name__ == "__main__":

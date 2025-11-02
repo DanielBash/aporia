@@ -1,7 +1,7 @@
 import time
 
 from PyQt6.QtWidgets import (QMainWindow, QPushButton,
-                             QLineEdit, QTextEdit, QGraphicsOpacityEffect, QWidget, QLabel)
+                             QLineEdit, QTextEdit, QGraphicsOpacityEffect, QWidget, QLabel, QFrame)
 from PyQt6.QtCore import Qt, QSize, QPropertyAnimation, pyqtProperty, QThread, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QTimer
@@ -42,7 +42,7 @@ class Notification(QWidget):
 
     def setupWindow(self):
         self.setWindowTitle(f'{conf.assistant_name} - уведомление')
-        self.setFixedSize(conf.tile * 7, conf.tile * 2)
+        self.setFixedSize(conf.tile * 7 + 20, conf.tile * 2 + 20)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint |
                             Qt.WindowType.ToolTip |
                             Qt.WindowType.WindowStaysOnTopHint)
@@ -63,8 +63,9 @@ class Notification(QWidget):
     def setupUi(self):
         t = conf.tile
 
-        background = QPushButton(self)
+        background = QFrame(self)
         background.setFixedSize(t * 7, t * 2)
+        background.setObjectName('ContentBlock')
 
         self.title_label = QLabel(self.title, self)
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)

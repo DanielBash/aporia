@@ -1,11 +1,35 @@
+import time
+
 from PyQt6.QtWidgets import (QMainWindow, QPushButton,
-                             QLineEdit, QTextEdit, QGraphicsOpacityEffect)
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QIcon
+                             QLineEdit, QTextEdit, QGraphicsOpacityEffect, QListWidget, QListWidgetItem, QLabel,
+                             QAbstractItemView, QMenu, QGraphicsBlurEffect)
+from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal
+from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import QTimer
 
 
 conf = None
+
+
+class UpdateWorker(QThread):
+    dataReady = pyqtSignal(dict)
+
+    def __init__(self, db, parent=None):
+        super().__init__(parent)
+        self.db = db
+        self.running = True
+
+    def run(self):
+        while self.running:
+            time.sleep(1)
+            try:
+                data = self.db.get_all()
+                self.dataReady.emit(data)
+            except Exception as e:
+                print('exeption here: ' + e)
+
+    def stop(self):
+        self.running = False
 
 
 class MainWindow(QMainWindow):
@@ -18,6 +42,8 @@ class MainWindow(QMainWindow):
         self.tile = 40
         self.changed = False
         self.menu_opened = True
+        self.fade_applied = False
+        self.blur_needed = False
 
         self.prompt = None
         self.gen_btn = None
@@ -27,9 +53,12 @@ class MainWindow(QMainWindow):
         self.add_chat_btn = None
         self.close_btn = None
         self.chats_bar = None
+        self.no_chats_label = None
+
+        self.chats = []
+        self.chat_selected = None
 
         self.focus = QTimer()
-        self.fade = QGraphicsOpacityEffect(self)
 
         self.setupWindow(pos)
         self.setupUi()
@@ -45,8 +74,6 @@ class MainWindow(QMainWindow):
 
         self.focus.timeout.connect(self.checkFocus)
         self.focus.start(100)
-
-        self.setGraphicsEffect(self.fade)
 
         self.setStyleSheet(conf.paths.style(conf.current_theme))
 
@@ -85,9 +112,15 @@ class MainWindow(QMainWindow):
         self.add_chat_btn.setIconSize(QSize(int(t * 0.7), int(t * 0.7)))
 
         # ДОСТУПНЫЕ ЧАТЫ: HTML
-        self.chats_bar = QPushButton(self)
+        self.chats_bar = QListWidget(self)
         self.chats_bar.setFixedSize(t * 4, t * 7 - 2)
         self.chats_bar.move(0, t + 1)
+        self.chats_bar.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.chats_bar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.chats_bar.itemSelectionChanged.connect(self.select_chat)
+        self.chats_bar.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.chats_bar.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.chats_bar.customContextMenuRequested.connect(self.chat_item_dropdown)
 
         # ЗКАРЫТЬ: КНОПКА
         self.close_btn = QPushButton(self)
@@ -107,6 +140,7 @@ class MainWindow(QMainWindow):
         self.search.move(t, 0)
 
         self.search.setPlaceholderText(f"🔍 Поиск")
+        self.search.textChanged.connect(self.update_chat_bar)
 
         # ТЕКУЩИЙ ЧАТ: ПОЛЕ
         self.message_bar = QPushButton(self)
@@ -128,15 +162,32 @@ class MainWindow(QMainWindow):
         self.prompt.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         QTimer.singleShot(50, self.prompt.setFocus)
 
+        # ПОДСКАЗКА: НЕТ ЧАТОВ
+        self.no_chats_label = QLabel(self)
+        self.no_chats_label.move(int(t * 0.5), int(t * 4))
+        self.no_chats_label.setText('Нет чатов...')
+
+        self.update_data(conf.db.get_all())
+
+        if not conf.api_auth:
+            conf.notification_manager.show_notification(title='Апория', text='Авторизация не завершена')
+            self.closeWindow()
+
+        self.update_thread = UpdateWorker(conf.db)
+        self.update_thread.dataReady.connect(self.update_data)
+        self.update_thread.start()
+
     def checkFocus(self):
-        if not self.isActiveWindow():
-            if not self.changed:
-                self.hide()
-                self.destroy()
-            else:
-                self.fade.setOpacity(0.5)
+        if not self.isActiveWindow() and not self.fade_applied and not self.blur_needed:
+            self.fade = QGraphicsOpacityEffect(self)
+            self.fade.setOpacity(0.5)
+            self.setGraphicsEffect(self.fade)
+            self.fade_applied = True
         else:
-            self.fade.setOpacity(1)
+            if self.fade_applied and not self.blur_needed:
+                if self.isActiveWindow():
+                    self.setGraphicsEffect(None)
+                    self.fade_applied = False
 
     def toggleMenu(self):
         if self.menu_opened:
@@ -164,9 +215,73 @@ class MainWindow(QMainWindow):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
-            self.hide()
-            self.destroy()
+            self.closeWindow()
 
     def closeWindow(self):
+        self.update_thread.stop()
         self.hide()
         self.destroy()
+
+    def update_data(self, data):
+        if not conf.api_auth:
+            conf.notification_manager.show_notification(title='Апория', text='Авторизация не завершена')
+            self.closeWindow()
+
+        self.update_chats_data(data)
+
+        self.update_chat_bar()
+
+    def update_chats_data(self, data):
+        data = data['chats']
+        ans = []
+        for i in data.keys():
+            chat = {'id': i}
+            chat.update(data[i])
+            ans.append(chat)
+        self.chats = ans
+
+    def update_chat_bar(self):
+        self.chats_bar.clear()
+        for i in self.chats:
+            if self.search.text().lower() in i['name'].lower():
+                chat = QListWidgetItem(i['name'])
+                self.chats_bar.addItem(chat)
+                chat.setData(50, i["id"])
+                if self.chat_selected == i["id"]:
+                    self.chats_bar.setCurrentItem(chat)
+                    chat.setSelected(True)
+        if len(self.chats) == 0:
+            self.no_chats_label.show()
+        else:
+            self.no_chats_label.hide()
+
+    def select_chat(self):
+        item = self.chats_bar.currentItem()
+        if item:
+            self.chat_selected = item.data(50)
+        else:
+            self.chat_selected = None
+
+    def apply_blur(self, rad):
+        self.blur_needed = True
+        self.blur = QGraphicsBlurEffect()
+        self.blur.setBlurRadius(rad)
+        self.setGraphicsEffect(self.blur)
+
+    def chat_item_dropdown(self, pos):
+        item = self.chats_bar.itemAt(pos)
+        if item is None:
+            return
+        menu = QMenu(self)
+
+        self.apply_blur(10)
+        del_action = QAction('Удалить чат', self)
+        rename_action = QAction('Переименовать', self)
+        about_action = QAction('Информация', self)
+
+        menu.addAction(del_action)
+        menu.addAction(rename_action)
+        menu.addAction(about_action)
+
+        pos = self.chats_bar.viewport().mapToGlobal(pos)
+        menu.exec(pos)

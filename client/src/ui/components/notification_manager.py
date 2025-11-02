@@ -23,7 +23,7 @@ class Manager(QObject):
         if not self.conf.notifications_on:
             return
         self.notification_queue.append({'text': text, 'title': title})
-        if not self.current_notification:
+        if not self.current_notification and QApplication.instance() is not None:
             self.show_next()
 
     def show_next(self):

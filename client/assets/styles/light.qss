@@ -1,19 +1,114 @@
+
+/* CONTENT BLOCK */
+
+#ContentBlock {
+    border-radius: 20px;
+    border: 1px solid #E0E0E0;
+    background: #FFFFFF;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333333;
+}
+
+/* Q TEXT EDIT */
+
 QTextEdit {
     border-radius: 20px;
-    border: 0px;
-    padding: 5px 10px;
-    font-size: 15px;
+    border: 1px solid #E0E0E0;
+    padding: 7px 5px;
+    font-size: 14px;
     background: #FFFFFF;
+    color: #333333;
+    selection-background-color: #2196F3;
+    selection-color: #FFFFFF;
 }
+
+QTextEdit:focus {
+    border: 1px solid #2196F3;
+    background: #FAFDFF;
+}
+
+/* Q PUSH BUTTON */
+
 QPushButton {
     border-radius: 20px;
-    border: 0px;
+    border: 1px solid #E0E0E0;
     background: #FFFFFF;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333333;
 }
+
+QPushButton:hover {
+    background: #F5F5F5;
+    border: 1px solid #CCCCCC;
+}
+
+QPushButton:pressed {
+    background: #EEEEEE;
+    border: 1px solid #BBBBBB;
+}
+
+QPushButton:disabled {
+    background: #F8F8F8;
+    color: #999999;
+    border: 1px solid #EEEEEE;
+}
+
+/* Q LINE EDIT */
+
 QLineEdit {
     border-radius: 20px;
-    border: 0px;
-    padding: 5px 10px;
-    font-size: 15px;
+    border: 1px solid #E0E0E0;
+    padding: 8px 12px;
+    font-size: 14px;
     background: #FFFFFF;
+    color: #333333;
+    selection-background-color: #2196F3;
+    selection-color: #FFFFFF;
+}
+
+QLineEdit:focus {
+    border: 1px solid #2196F3;
+    background: #FAFDFF;
+}
+
+QLineEdit:disabled {
+    background: #F8F8F8;
+    color: #999999;
+}
+
+/* Q LIST WIDGET */
+
+QListWidget {
+    border-radius: 20px;
+    border: 1px solid #E0E0E0;
+    background: #FFFFFF;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #333333;
+    outline: none;
+}
+
+QListWidget::item {
+    border-radius: 12px;
+    padding: 6px 10px;
+    margin: 3px 2px;
+}
+
+QListWidget::item:hover {
+    background: #F5F5F5;
+}
+
+QListWidget::item:selected {
+    background: #2196F3;
+    color: #FFFFFF;
+}
+
+QListWidget:disabled {
+    background: #F8F8F8;
+    color: #999999;
+    border: 1px solid #EEEEEE;
 }

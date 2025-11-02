@@ -1,19 +1,72 @@
 QTextEdit {
     border-radius: 20px;
-    border: 0px;
-    padding: 5px 10px;
-    font-size: 15px;
-    background: #FFFFFF;
+    border: 1px solid #444444;
+    padding: 8px 5px;
+    font-size: 14px;
+    background: #2D2D2D;
+    color: #E0E0E0;
+    selection-background-color: #1976D2;
+    selection-color: #FFFFFF;
 }
+
+QTextEdit:focus {
+    border: 1px solid #1976D2;
+    background: #1E1E1E;
+}
+
 QPushButton {
     border-radius: 20px;
-    border: 0px;
-    background: #FFFFFF;
+    border: 1px solid #444444;
+    background: #3D3D3D;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #E0E0E0;
 }
+
+#ContentBlock {
+    border-radius: 20px;
+    border: 1px solid #444444;
+    background: #3D3D3D;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #E0E0E0;
+}
+
+QPushButton:hover {
+    background: #4D4D4D;
+    border: 1px solid #555555;
+}
+
+QPushButton:pressed {
+    background: #2D2D2D;
+    border: 1px solid #666666;
+}
+
+QPushButton:disabled {
+    background: #2A2A2A;
+    color: #666666;
+    border: 1px solid #333333;
+}
+
 QLineEdit {
     border-radius: 20px;
-    border: 0px;
-    padding: 5px 10px;
-    font-size: 15px;
-    background: #FFFFFF;
+    border: 1px solid #444444;
+    padding: 8px 12px;
+    font-size: 14px;
+    background: #2D2D2D;
+    color: #E0E0E0;
+    selection-background-color: #1976D2;
+    selection-color: #FFFFFF;
+}
+
+QLineEdit:focus {
+    border: 1px solid #1976D2;
+    background: #1E1E1E;
+}
+
+QLineEdit:disabled {
+    background: #252525;
+    color: #666666;
 }

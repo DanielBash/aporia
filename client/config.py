@@ -2,6 +2,10 @@ import sys
 from pathlib import Path
 from dataclasses import dataclass
 
+from src.api import Api
+from src.database import Database
+from src.ui.components.notification_manager import Manager
+
 
 @dataclass
 class Paths:
@@ -17,7 +21,7 @@ class Paths:
         self.assets_dir = self.root_dir / "assets"
 
         self.workspace_dir = self.data_dir / "workspace"
-        self.database_dir = self.data_dir / "instance"
+        self.database_dir = self.data_dir / "instance" / 'db.sqlite'
 
         self.icons_dir = self.assets_dir / "icons"
         self.style_dir = self.assets_dir / "styles"
@@ -41,7 +45,7 @@ class Config:
     assistant_name = 'Апория'
     application_version = '1.0.0'
 
-    server_host = 'aporia.ibashlhr.beget.tech'
+    server_host = 'https://aporia.ibashlhr.beget.tech/api'
     server_port = 80
 
     feed_check_timeout = 1
@@ -49,23 +53,24 @@ class Config:
     # Path settings
     paths = Paths()
 
-    # Database settings
-    db = None
-
-    # Networking settings
-    api = None
-
-    # Asset settings
-    assets = None
-
     # Notification settings
     notification_manager = None
     notifications_on = True
     notification_alive_time = 5
 
+    # Network debug
+    api_auth = False
+
     # User settings
     open_window_shortcut = 'ctrl+shift+h'
-    enable_shortcut = True
+    enable_shortcut = False
 
     current_theme = 'light'
     tile = 40
+
+    def __init__(self):
+        self.notification_manager = Manager(self)
+        self.api = Api(self)
+        self.db = Database(self)
+
+config = Config()
