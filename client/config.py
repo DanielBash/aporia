@@ -25,12 +25,27 @@ class Paths:
 
         self.icons_dir = self.assets_dir / "icons"
         self.style_dir = self.assets_dir / "styles"
+        self.html_dir = self.assets_dir / "html"
 
     def icon(self, name):
         return str(self.icons_dir / (name + '.png'))
 
     def style(self, name, extract_text=True):
         dir = self.style_dir / (name + '.qss')
+        if extract_text:
+            return dir.read_text()
+        else:
+            return dir
+
+    def css(self, name, extract_text=True):
+        dir = self.style_dir / (name + '.css')
+        if extract_text:
+            return dir.read_text()
+        else:
+            return dir
+
+    def html(self, name, extract_text=True):
+        dir = self.html_dir / (name + '.html')
         if extract_text:
             return dir.read_text()
         else:
@@ -46,7 +61,6 @@ class Config:
     application_version = '1.0.0'
 
     server_host = 'https://aporia.ibashlhr.beget.tech/api'
-    server_port = 80
 
     feed_check_timeout = 1
 

@@ -86,8 +86,6 @@ def create_chat():
         name = request.get_json()['name']
     except Exception:
         return gen_response({'comment': 'No name given'}, status='ERROR', code=400)
-    if not check_string(name):
-        return gen_response({'comment': 'Invalid chat name'}, status='ERROR', code=400)
 
     chat = Chat(name=name, cluster_id=user.cluster_id)
     db.session.add(chat)
@@ -106,8 +104,6 @@ def edit_chat_name():
         chat_id = request.get_json()['chat_id']
     except Exception:
         return gen_response({'comment': 'No name given'}, status='ERROR', code=400)
-    if not check_string(name):
-        return gen_response({'comment': 'Invalid chat name'}, status='ERROR', code=400)
 
     chat = Chat.query.get(chat_id)
 
@@ -151,6 +147,7 @@ def delete_chat():
 @limiter.limit("60 per minute")
 @token_required
 def send_chat_message():
+    print('sending')
     user = request.user
     try:
         chat_id = request.get_json()['chat_id']
@@ -161,19 +158,22 @@ def send_chat_message():
     chat = Chat.query.get(chat_id)
 
     if not chat:
+        print('no chayt')
         return gen_response({'comment': 'Invalid chat id'}, status='ERROR', code=400)
 
     if chat.cluster_id != user.cluster_id or not chat.ready:
+        print('no access')
         return gen_response({'comment': 'Access denied'}, status='ERROR', code=400)
 
     if len(text) >= 5000 or len(text) == 0:
+        print('incorrect size')
         return gen_response({'comment': 'The message is incorrect size'}, status='ERROR', code=400)
 
     msg = Message(text=text, chat_id=chat_id, user_id=user.id)
     chat.ready = False
     db.session.add(msg)
     db.session.commit()
-
+    print('sent')
     app_context = current_app.app_context()
     thread = threading.Thread(
         target=start_ai,
@@ -222,9 +222,6 @@ def complete_event():
 def start_ai(app_context, chat_id, message_id, text):
     with app_context:
         try:
-            from app import db
-            from models import Message, Chat
-
             chat = Chat.query.get(chat_id)
             computers = Message.query.get(message_id).user.cluster.users
             user_id = Message.query.get(message_id).user.id
@@ -291,16 +288,11 @@ def start_ai(app_context, chat_id, message_id, text):
                     task = EventStack.query.get(i)
                     ans += f'Код для компьютера {task.user.id}. stdout: {task.text}\n'
                 ans += 'Все? Если ты все закончил/узнал что надо, не выводи в следующем ответе код. Если можно улучшить результат, можно исполнить еще код.'
-            hist = [{"role": 'system', "content": SYSTEM_PROMPT_DEEPSEEK_ANSWERING}] + hist[1:] + [{"role": 'assistant', "content": '[!THINKING!]' + ans + '[!THINKING!]'}]
+            hist = [{"role": 'system', "content": SYSTEM_PROMPT_DEEPSEEK_ANSWERING}] + hist[1:] + [{"role": 'assistant', "content": 'STARTED THINKING' + ans + 'ENDED THINKING'}]
             response = client.chat.completions.create(model="deepseek-chat", messages=hist, temperature=0.7, stream=False)
-            ans = '[!THINKING]' + ans + '[!THINKING!]' + response.choices[0].message.content
+            ans = ans + '!THINKING!' + response.choices[0].message.content
             message = Message(chat_id=chat_id, text=ans)
             db.session.add(message)
-            db.session.commit()
-
-            ai_msg = Message(text=ai_text, chat_id=chat_id, user_id=None)
-            db.session.add(ai_msg)
-
             chat.ready = True
             db.session.commit()
 

@@ -32,3 +32,6 @@ class Api:
 
     def delete_chat(self, token, id, chat_id):
         return self.req('delete_chat', m='post', d={'user_token': token, 'user_id': id, 'chat_id': chat_id})
+
+    def send_message(self, token, id, text, chat_id):
+        return self.req('send_message', m='post', d={'user_token': token, 'user_id': id, 'chat_id': chat_id, 'text': text})

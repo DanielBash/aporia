@@ -1,0 +1,67 @@
+body {
+    background: transparent !important;
+    color: #333333;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 14px;
+    margin: 0;
+    padding: 10px;
+    overflow: auto;
+    display: block;
+}
+body::-webkit-scrollbar {
+    display: none;
+}
+.message-block {
+    display: inline-block;
+    max-width: 70%;
+    border-radius: 16px;
+    padding: 10px 14px;
+    margin: 6px 0;
+    line-height: 1.4;
+    word-wrap: break-word;
+    border: 1px solid #E0E0E0;
+}
+.message-author {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.message-text {
+    font-size: 14px;
+    color: #333333;
+}
+.message-system {
+    color: #2196F3;
+    font-style: italic;
+    text-align: center;
+}
+.message-aporia {
+    background-color: #FFFFFF;
+    border-color: #BBDEFB;
+    float: left;
+    clear: both;
+    border-top-left-radius: 4px;
+}
+.message-user {
+    background-color: #E3F2FD;
+    border-color: #2196F3;
+    float: right;
+    clear: both;
+    border-top-right-radius: 4px;
+}
+a {
+    color: #2196F3;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+::selection {
+    background-color: #2196F3;
+    color: #FFFFFF;
+}
+body::after {
+    content: "";
+    display: block;
+    clear: both;
+}

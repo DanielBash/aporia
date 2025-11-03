@@ -1,13 +1,22 @@
 import time
 
+import mdtex2html
+from PyQt6 import QtCore
+from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import (QMainWindow, QPushButton,
                              QLineEdit, QTextEdit, QGraphicsOpacityEffect, QListWidget, QListWidgetItem, QLabel,
-                             QAbstractItemView, QMenu, QGraphicsBlurEffect, QDialog)
-from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal
-from PyQt6.QtGui import QIcon, QAction
+                             QAbstractItemView, QMenu, QGraphicsBlurEffect, QDialog, QFrame, QWidget, QVBoxLayout,
+                             QScrollArea, QTextBrowser)
+from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QRect
+from PyQt6.QtGui import QIcon, QAction, QPainterPath, QColor
 from PyQt6.QtCore import QTimer
 import threading
+
+from client.src.ui.components.prompt_edit import PromptEdit
 from client.src.ui.windows.input_popup import TextReq
+import markdown
+from jinja2 import Template
+import html as cgi
 
 conf = None
 
@@ -22,10 +31,9 @@ class UpdateWorker(QThread):
 
     def run(self):
         while self.running:
-            time.sleep(1)
+            time.sleep(0.5)
             try:
-                data = self.db.get_all()
-                self.dataReady.emit(data)
+                self.dataReady.emit(self.db.get_all())
             except Exception as e:
                 print(e)
 
@@ -58,6 +66,7 @@ class MainWindow(QMainWindow):
 
         self.chats = []
         self.chat_selected = None
+        self.messages_displayed = [{'id': 0, 'text': 'blag'}]
 
         self.focus = QTimer()
 
@@ -101,6 +110,7 @@ class MainWindow(QMainWindow):
         self.gen_btn.setToolTip('Отправить команду')
         self.gen_btn.setIcon(QIcon(conf.paths.icon("generate_btn")))
         self.gen_btn.setIconSize(QSize(int(t * 0.7), int(t * 0.7)))
+        self.gen_btn.clicked.connect(self.sendMessage)
 
         # ДОБАВИТЬ ЧАТ: КНОПКА
         self.add_chat_btn = QPushButton(self)
@@ -114,13 +124,13 @@ class MainWindow(QMainWindow):
 
         self.add_chat_btn.clicked.connect(self.addChat)
 
-        # ДОСТУПНЫЕ ЧАТЫ: HTML
+        # ДОСТУПНЫЕ ЧАТЫ
         self.chats_bar = QListWidget(self)
         self.chats_bar.setFixedSize(t * 4, t * 7 - 2)
         self.chats_bar.move(0, t + 1)
         self.chats_bar.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.chats_bar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.chats_bar.itemSelectionChanged.connect(self.selectChat)
+        self.chats_bar.itemClicked.connect(self.selectChat)
         self.chats_bar.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.chats_bar.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.chats_bar.customContextMenuRequested.connect(self.chatItemDropdown)
@@ -146,15 +156,20 @@ class MainWindow(QMainWindow):
         self.search.textChanged.connect(self.updateChatBar)
 
         # ТЕКУЩИЙ ЧАТ: ПОЛЕ
-        self.message_bar = QPushButton(self)
-
-        self.message_bar.setFixedSize(t * 9, t * 8 - 1)
-        self.message_bar.move(t * 4 + 1, 0)
-
+        self.messages_border = QFrame(self)
+        self.messages_border.setObjectName('ContentBlock')
+        self.messages_border.setFixedSize(t * 9, t * 8 - 1)
+        self.messages_border.move(t * 4 + 1, 0)
+        self.messages_border.hide()
+        self.message_bar = QWebEngineView(self)
+        self.message_bar.setFixedSize(t * 8, t * 7 - 1)
+        self.message_bar.move(int(t * 4.5 + 1), int(t * 0.5))
         self.message_bar.hide()
+        self.message_bar.page().setBackgroundColor(QColor(0, 0, 0, 0))
+        self.message_bar.setHtml('')
 
         # ЗАПРОС: ПОЛЕ ВВОДА
-        self.prompt = QTextEdit(self)
+        self.prompt = PromptEdit(self)
 
         self.prompt.setFixedSize(t * 7, t)
         self.prompt.move(t * 5, t * 8)
@@ -163,12 +178,19 @@ class MainWindow(QMainWindow):
         self.prompt.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.prompt.textChanged.connect(self.promptEdited)
         self.prompt.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.prompt.returnPressed.connect(self.sendMessage)
         QTimer.singleShot(50, self.prompt.setFocus)
 
         # ПОДСКАЗКА: НЕТ ЧАТОВ
         self.no_chats_label = QLabel(self)
         self.no_chats_label.move(int(t * 1), int(t * 4))
         self.no_chats_label.setText('Нет чатов...')
+
+        # ПОДСКАЗКА: НЕТ СООБЩЕНИЙ
+        self.no_messages_label = QLabel(self)
+        self.no_messages_label.move(int(t * 6.8), int(t * 4))
+        self.no_messages_label.setFixedSize(t * 5, t * 1)
+        self.no_messages_label.setText('Нет сообщений...')
 
         if not conf.api_auth:
             conf.notification_manager.show_notification(title='Апория', text='Авторизация не завершена')
@@ -187,10 +209,9 @@ class MainWindow(QMainWindow):
             self.setGraphicsEffect(self.fade)
             self.fade_applied = True
         else:
-            if self.fade_applied:
-                if self.isActiveWindow():
-                    self.setGraphicsEffect(None)
-                    self.fade_applied = False
+            if self.fade_applied and self.isActiveWindow():
+                self.setGraphicsEffect(None)
+                self.fade_applied = False
 
     def toggleMenu(self):
         if self.menu_opened:
@@ -221,7 +242,8 @@ class MainWindow(QMainWindow):
             self.closeWindow()
 
     def closeWindow(self):
-        self.update_thread.stop()
+        if hasattr(self, 'update_thread'):
+            self.update_thread.stop()
         self.hide()
         self.destroy()
         self.needs_destroy = True
@@ -230,10 +252,11 @@ class MainWindow(QMainWindow):
         if not conf.api_auth:
             conf.notification_manager.show_notification(title='Апория', text='Авторизация не завершена')
             self.closeWindow()
-
         self.updateChatsData(data)
 
         self.updateChatBar()
+        if self.chat_selected:
+            self.updateMessageBar()
 
     def updateChatsData(self, data):
         data = data['chats']
@@ -245,32 +268,45 @@ class MainWindow(QMainWindow):
         self.chats = ans
 
     def updateChatBar(self):
+        self.chats_bar.clearSelection()
         existing_items_by_id = {}
         for row in range(self.chats_bar.count()):
             item = self.chats_bar.item(row)
             item_id = item.data(50)
             existing_items_by_id[item_id] = item
-
         desired_ids = set()
+        search_text = self.search.text().lower()
         for chat_info in self.chats:
-            if self.search.text().lower() in chat_info['name'].lower():
+            if search_text in chat_info['name'].lower():
                 desired_ids.add(chat_info['id'])
+
                 if chat_info['id'] not in existing_items_by_id:
                     new_item = QListWidgetItem(chat_info['name'])
                     new_item.setData(50, chat_info['id'])
                     self.chats_bar.addItem(new_item)
-                    if self.chat_selected == chat_info['id']:
-                        self.chats_bar.setCurrentItem(new_item)
-                        new_item.setSelected(True)
-                if chat_info['id'] in existing_items_by_id:
-                    if chat_info['name'] != existing_items_by_id[chat_info['id']].text():
-                        existing_items_by_id[chat_info['id']].setText(chat_info['name'])
-
+                    existing_items_by_id[chat_info['id']] = new_item
+                else:
+                    existing_item = existing_items_by_id[chat_info['id']]
+                    if chat_info['name'] != existing_item.text():
+                        existing_item.setText(chat_info['name'])
         for item_id, item in list(existing_items_by_id.items()):
             if item_id not in desired_ids:
                 row = self.chats_bar.row(item)
-                taken = self.chats_bar.takeItem(row)
-
+                self.chats_bar.takeItem(row)
+        if self.chat_selected and self.chat_selected in desired_ids:
+            for row in range(self.chats_bar.count()):
+                item = self.chats_bar.item(row)
+                if item.data(50) == self.chat_selected:
+                    self.chats_bar.setCurrentItem(item)
+                    item.setSelected(True)
+                    break
+        if self.chat_selected:
+            self.message_bar.show()
+            self.messages_border.show()
+        else:
+            self.message_bar.hide()
+            self.messages_border.hide()
+            self.no_messages_label.hide()
         if not desired_ids and self.menu_opened:
             self.no_chats_label.show()
         else:
@@ -280,8 +316,6 @@ class MainWindow(QMainWindow):
         item = self.chats_bar.currentItem()
         if item:
             self.chat_selected = item.data(50)
-        else:
-            self.chat_selected = None
 
     def chatItemDropdown(self, pos):
         item = self.chats_bar.itemAt(pos)
@@ -305,19 +339,15 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(conf.paths.style(conf.current_theme))
 
     def delChat(self, id):
+        if id == self.chat_selected:
+            self.chat_selected = None
+            self.chats_bar.clearSelection()
         threading.Thread(target=lambda: conf.db.delete_chat(id), daemon=True).start()
 
     def renameChat(self, id):
         text = TextReq(conf, 'Введите новое название', parent=self)
         if text.exec() == QDialog.DialogCode.Accepted:
             text = text.get_text()
-            existing_items_by_id = {}
-            for row in range(self.chats_bar.count()):
-                item = self.chats_bar.item(row)
-                item_id = item.data(50)
-                existing_items_by_id[item_id] = item
-            if id in existing_items_by_id.keys():
-                existing_items_by_id[id].setText(text)
             threading.Thread(target=lambda: conf.db.rename_chat(id, text), daemon=True).start()
 
     def addChat(self):
@@ -325,3 +355,39 @@ class MainWindow(QMainWindow):
         if text.exec() == QDialog.DialogCode.Accepted:
             text = text.get_text()
             threading.Thread(target=lambda: conf.db.create_chat(text), daemon=True).start()
+
+    def sendMessage(self):
+        message = self.prompt.toPlainText()
+        self.prompt.setText('')
+        if self.chat_selected:
+            threading.Thread(target=lambda: conf.db.send_message(message, self.chat_selected), daemon=True).start()
+
+
+    def updateMessageBar(self):
+        chat_data = None
+        for i in range(len(self.chats)):
+            if self.chats[i]['id'] == self.chat_selected:
+                chat_data = self.chats[i]
+                break
+        if chat_data is None:
+            return
+        if self.messages_displayed == chat_data['messages']:
+            return
+        ans = ''
+        for i in chat_data['messages']:
+            if i['user_sent'] is None and '!THINKING!' in i['text']:
+                ans += f'''<div class="message-block message-aporia"><div class="message-author">Апория</div>
+                        <div class="message-text">{mdtex2html.convert(i['text'].split('!THINKING!')[1], extensions=['fenced_code'])}</div></div>'''
+            elif ']' in i['text']:
+                actual = i['text'][i['text'].index(']') + 1:]
+                ans += f'''<div class="message-block message-user"><div class="message-author">Компьютер {i['user_sent']}</div>
+                        <div class="message-text">{cgi.escape(actual)}</div></div>'''
+        if len(chat_data['messages']) == 0:
+            self.no_messages_label.show()
+        else:
+            self.no_messages_label.hide()
+        styles = conf.paths.css(conf.current_theme)
+        html = Template(conf.paths.html('messages')).render(messages=ans, styles=styles)
+        self.message_bar.page().setBackgroundColor(QColor(0, 0, 0, 0))
+        self.message_bar.setHtml(html)
+        self.messages_displayed = chat_data['messages'].copy()

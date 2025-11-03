@@ -45,7 +45,7 @@ class Chat(db.Model, Timestamp):
     cluster = db.relationship('Cluster', back_populates='chats')
 
     messages = db.relationship('Message', back_populates='chat', cascade='all, delete-orphan',
-                               passive_deletes=True)
+                               passive_deletes=False)
 
     ready = db.Column(db.Boolean, unique=False, default=True)
 
