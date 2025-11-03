@@ -80,7 +80,7 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.move(int(pos[0] - self.tile * 8.5), int(pos[1] - self.tile * 8.5))
-        self.setWindowIcon(QIcon(conf.paths.icon("icon")))
+        self.setWindowIcon(QIcon(conf.paths.icon("icon_active")))
 
         self.focus.timeout.connect(self.checkFocus)
         self.focus.start(100)
@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         self.gen_btn.move(t * 12, t * 8)
 
         self.gen_btn.setToolTip('Отправить команду')
-        self.gen_btn.setIcon(QIcon(conf.paths.icon("generate_btn")))
+        self.gen_btn.setIcon(QIcon(conf.paths.icon("generate_btn_active")))
         self.gen_btn.setIconSize(QSize(int(t * 0.7), int(t * 0.7)))
         self.gen_btn.clicked.connect(self.sendMessage)
 
@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         self.add_chat_btn.move(0, t * 8)
 
         self.add_chat_btn.setToolTip('Добавить чат')
-        self.add_chat_btn.setIcon(QIcon(conf.paths.icon("add_chat_btn")))
+        self.add_chat_btn.setIcon(QIcon(conf.paths.icon("add_chat_btn_active")))
         self.add_chat_btn.setIconSize(QSize(int(t * 0.7), int(t * 0.7)))
 
         self.add_chat_btn.clicked.connect(self.addChat)
@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
         self.close_btn.move(0, 0)
 
         self.close_btn.setToolTip('Закрыть приложение')
-        self.close_btn.setIcon(QIcon(conf.paths.icon("close_btn")))
+        self.close_btn.setIcon(QIcon(conf.paths.icon("close_btn_active")))
         self.close_btn.setIconSize(QSize(int(t * 0.7), int(t * 0.7)))
         self.close_btn.clicked.connect(self.closeWindow)
 
@@ -168,6 +168,17 @@ class MainWindow(QMainWindow):
         self.message_bar.page().setBackgroundColor(QColor(0, 0, 0, 0))
         self.message_bar.setHtml('')
 
+        # ПОДСКАЗКА: НЕТ ЧАТОВ
+        self.no_chats_label = QLabel(self)
+        self.no_chats_label.move(int(t * 1), int(t * 4))
+        self.no_chats_label.setText('Нет чатов...')
+
+        # ПОДСКАЗКА: НЕТ СООБЩЕНИЙ
+        self.no_messages_label = QLabel(self)
+        self.no_messages_label.move(int(t * 6.8), int(t * 4))
+        self.no_messages_label.setFixedSize(t * 5, t * 1)
+        self.no_messages_label.setText('Нет сообщений...')
+
         # ЗАПРОС: ПОЛЕ ВВОДА
         self.prompt = PromptEdit(self)
 
@@ -180,17 +191,6 @@ class MainWindow(QMainWindow):
         self.prompt.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.prompt.returnPressed.connect(self.sendMessage)
         QTimer.singleShot(50, self.prompt.setFocus)
-
-        # ПОДСКАЗКА: НЕТ ЧАТОВ
-        self.no_chats_label = QLabel(self)
-        self.no_chats_label.move(int(t * 1), int(t * 4))
-        self.no_chats_label.setText('Нет чатов...')
-
-        # ПОДСКАЗКА: НЕТ СООБЩЕНИЙ
-        self.no_messages_label = QLabel(self)
-        self.no_messages_label.move(int(t * 6.8), int(t * 4))
-        self.no_messages_label.setFixedSize(t * 5, t * 1)
-        self.no_messages_label.setText('Нет сообщений...')
 
         if not conf.api_auth:
             conf.notification_manager.show_notification(title='Апория', text='Авторизация не завершена')
@@ -244,9 +244,8 @@ class MainWindow(QMainWindow):
     def closeWindow(self):
         if hasattr(self, 'update_thread'):
             self.update_thread.stop()
-        self.hide()
-        self.destroy()
         self.needs_destroy = True
+        self.deleteLater()
 
     def updateData(self, data):
         if not conf.api_auth:
@@ -377,7 +376,7 @@ class MainWindow(QMainWindow):
         for i in chat_data['messages']:
             if i['user_sent'] is None and '!THINKING!' in i['text']:
                 ans += f'''<div class="message-block message-aporia"><div class="message-author">Апория</div>
-                        <div class="message-text">{mdtex2html.convert(i['text'].split('!THINKING!')[1], extensions=['fenced_code'])}</div></div>'''
+                        <div class="message-text">{mdtex2html.convert(i['text'].split('!THINKING!')[1], extensions=['fenced_code', 'codehilite'])}</div></div>'''
             elif ']' in i['text']:
                 actual = i['text'][i['text'].index(']') + 1:]
                 ans += f'''<div class="message-block message-user"><div class="message-author">Компьютер {i['user_sent']}</div>
@@ -391,3 +390,11 @@ class MainWindow(QMainWindow):
         self.message_bar.page().setBackgroundColor(QColor(0, 0, 0, 0))
         self.message_bar.setHtml(html)
         self.messages_displayed = chat_data['messages'].copy()
+        if not chat_data['ready']:
+            self.prompt.setEnabled(False)
+            self.gen_btn.setEnabled(False)
+            self.gen_btn.setIcon(QIcon(conf.paths.icon("generate_btn")))
+        else:
+            self.prompt.setEnabled(True)
+            self.gen_btn.setEnabled(True)
+            self.gen_btn.setIcon(QIcon(conf.paths.icon("generate_btn_active")))

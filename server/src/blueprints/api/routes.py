@@ -147,7 +147,6 @@ def delete_chat():
 @limiter.limit("60 per minute")
 @token_required
 def send_chat_message():
-    print('sending')
     user = request.user
     try:
         chat_id = request.get_json()['chat_id']
@@ -158,22 +157,18 @@ def send_chat_message():
     chat = Chat.query.get(chat_id)
 
     if not chat:
-        print('no chayt')
         return gen_response({'comment': 'Invalid chat id'}, status='ERROR', code=400)
 
     if chat.cluster_id != user.cluster_id or not chat.ready:
-        print('no access')
         return gen_response({'comment': 'Access denied'}, status='ERROR', code=400)
 
     if len(text) >= 5000 or len(text) == 0:
-        print('incorrect size')
         return gen_response({'comment': 'The message is incorrect size'}, status='ERROR', code=400)
 
     msg = Message(text=text, chat_id=chat_id, user_id=user.id)
     chat.ready = False
     db.session.add(msg)
     db.session.commit()
-    print('sent')
     app_context = current_app.app_context()
     thread = threading.Thread(
         target=start_ai,
@@ -191,7 +186,8 @@ def get_events():
     user = request.user
     ans = []
     for i in user.events:
-        ans.append({'timestamp': i.created_at, 'text': i.text, 'id': i.id})
+        if not i.finished:
+            ans.append({'timestamp': i.created_at, 'text': i.text, 'id': i.id})
     return gen_response(ans)
 
 
@@ -265,28 +261,30 @@ def start_ai(app_context, chat_id, message_id, text):
                     if elapsed > WAITING_FOR_RESPONSE_TIMEOUT:
                         for i in task_ids:
                             task = EventStack.query.get(i)
-                            task.text = 'Code didnt execute. It was elapsing too long.'
+                            task.return_text = 'Code didnt execute. It was elapsing too long.'
                             task.finished = True
                         db.session.commit()
                         break
 
                     any_task_unfinished = False
                     for i in task_ids:
+                        db.session.expire_all()
                         task = EventStack.query.get(i)
                         if time.time() - task.user.last_online.timestamp() > USER_OFFLINE_TIMEOUT:
-                            task.text = 'Code didnt execute. Target computer is offline.'
+                            task.return_text = 'Code didnt execute. Target computer is offline.'
                             task.finished = True
                             db.session.commit()
                         if not task.finished:
                             any_task_unfinished = True
 
                     if not any_task_unfinished:
+                        print('some tasks are not finished....')
                         break
 
                     time.sleep(1)
                 for i in task_ids:
                     task = EventStack.query.get(i)
-                    ans += f'Код для компьютера {task.user.id}. stdout: {task.text}\n'
+                    ans += f'Код для компьютера {task.user.id}. stdout: {task.return_text}\n'
                 ans += 'Все? Если ты все закончил/узнал что надо, не выводи в следующем ответе код. Если можно улучшить результат, можно исполнить еще код.'
             hist = [{"role": 'system', "content": SYSTEM_PROMPT_DEEPSEEK_ANSWERING}] + hist[1:] + [{"role": 'assistant', "content": 'STARTED THINKING' + ans + 'ENDED THINKING'}]
             response = client.chat.completions.create(model="deepseek-chat", messages=hist, temperature=0.7, stream=False)

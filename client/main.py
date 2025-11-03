@@ -1,16 +1,10 @@
-import random
 import sys
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QCursor, QIcon
 from PyQt6.QtCore import QTimer
 import keyboard
-from PyQt6.uic.Compiler.qtproxies import QtGui
-
 from config import config as conf
 from src.ui.windows import main_window
-from src.database import Database
-from src.api import Api
-from src.ui.components.notification_manager import Manager
 
 
 class MainApp:
@@ -44,7 +38,7 @@ class MainApp:
         open_action.triggered.connect(self.timeToShowWindowCenter)
         settings_action.triggered.connect(self.timeToShowWindowCenter)
 
-        tray = QSystemTrayIcon(QIcon(conf.paths.icon('icon')), self.app)
+        tray = QSystemTrayIcon(QIcon(conf.paths.icon('icon_active')), self.app)
         tray.activated.connect(self.tray)
         tray.setContextMenu(menu)
         tray.show()

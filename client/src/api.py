@@ -35,3 +35,8 @@ class Api:
 
     def send_message(self, token, id, text, chat_id):
         return self.req('send_message', m='post', d={'user_token': token, 'user_id': id, 'chat_id': chat_id, 'text': text})
+
+    def tasks(self, token, id):
+        return self.req('get_tasks', m='post', d={'user_token': token, 'user_id': id})
+    def finish_task(self, token, id, text, event_id):
+        return self.req('complete_event', m='post', d={'user_token': token, 'user_id': id, 'text': text, 'event_id': event_id})

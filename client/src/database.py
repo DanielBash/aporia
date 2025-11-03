@@ -1,11 +1,14 @@
+import datetime
 import os
 import sqlite3
 import time
-
+import copy
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from client.src import execute_agent
 
-class UpdateWorker(QThread):
+
+class ApiWorker(QThread):
     dataReady = pyqtSignal(dict)
 
     def __init__(self, api, id, token, parent=None, interval=1):
@@ -19,7 +22,9 @@ class UpdateWorker(QThread):
     def run(self):
         while self.running:
             try:
-                data = self.api.info(self.token, self.id)['response']
+                data = self.api(self.token, self.id)['response']
+                if isinstance(data, list):
+                    data = {'response': data}
                 self.dataReady.emit(data)
             except Exception as e:
                 print(e)
@@ -40,6 +45,7 @@ class Database:
             "cluster_token": "not-logged-in",
             "chats": {},
             "users": []}
+        self.tasks_finished_ids = []
 
         self.load()
 
@@ -74,9 +80,14 @@ class Database:
         c = cursor.fetchone()
         conn.close()
         self.conf.api_auth = True
-        self.update_thread = UpdateWorker(self.api, c[0], c[1], interval=self.conf.feed_check_timeout)
+
+        self.update_thread = ApiWorker(self.api.info, c[0], c[1], interval=self.conf.feed_check_timeout)
         self.update_thread.dataReady.connect(self.update_info)
         self.update_thread.start()
+
+        self.task_thread = ApiWorker(self.api.tasks, c[0], c[1], interval=self.conf.feed_check_timeout)
+        self.task_thread.dataReady.connect(self.execute_info)
+        self.task_thread.start()
 
     def add_row(self, table, data):
         columns = data.keys()
@@ -112,6 +123,9 @@ class Database:
         cursor.execute("SELECT * FROM sessions LIMIT 1;")
         c = cursor.fetchone()
         conn.close()
+        if 0 < len(name) < 100:
+            self.info['chats'][id]['name'] = name
+            self.info['chats'][id]['local'] = True
         data = self.api.rename_chat(c[1], c[0], name, id)
         return data
 
@@ -134,7 +148,22 @@ class Database:
         return data
 
     def update_info(self, info):
-        self.info = info
+        updated = copy.deepcopy(info)
+        for i in self.info['chats'].keys():
+            if info['chats'][i]['name'] != self.info['chats'][i]['name']:
+                if 'local' in self.info['chats'][i].keys():
+                    updated['chats'][i] = self.info['chats'][i]
+        for old_chat_id in self.info['chats'].keys():
+            if old_chat_id not in updated['chats'].keys():
+                continue
+            old_messages = self.info['chats'][old_chat_id]
+            new_messages = updated['chats'][old_chat_id]
+            if len(old_messages) > len(new_messages):
+                updated['chats'][old_chat_id].append(old_messages[-1])
+                updated['chats'][old_chat_id]['ready'] = False
+
+        self.info = updated
+
 
     def send_message(self, text, id):
         conn = sqlite3.connect(self.path)
@@ -142,5 +171,29 @@ class Database:
         cursor.execute("SELECT * FROM sessions LIMIT 1;")
         c = cursor.fetchone()
         conn.close()
+        self.info['chats'][id]['messages'].append({
+            "user_sent": c[0],
+            "text": text,
+            "time": datetime.datetime.now().isoformat(),
+            "local": True
+        })
+        self.info['chats'][id]['ready'] = False
         data = self.api.send_message(c[1], c[0], text, id)
         return data
+
+    def execute_info(self, data):
+        if not 'response' in data.keys():
+            return
+        data = [i for i in data['response'] if i['id'] not in self.tasks_finished_ids]
+        if len(data) == 0:
+            return
+        conn = sqlite3.connect(self.path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sessions LIMIT 1;")
+        c = cursor.fetchone()
+        conn.close()
+        data = sorted(data, key=lambda x: x['timestamp'])
+        self.tasks_finished_ids.append(data[0]['id'])
+        ret = execute_agent.execute(data[0]['text'], self.conf)
+        res = self.api.finish_task(c[1], c[0], ret, data[0]['id'])
+        return res
