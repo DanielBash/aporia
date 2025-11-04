@@ -6,12 +6,6 @@ import keyboard
 from config import config as conf
 from src.ui.windows import main_window
 
-def except_hook(cls, exception, traceback):
-    print(f"Exception caught: {exception}")
-    sys.__excepthook__(cls, exception, traceback)
-
-sys.excepthook = except_hook
-
 class MainApp:
     def __init__(self):
         self.app = QApplication(sys.argv)
