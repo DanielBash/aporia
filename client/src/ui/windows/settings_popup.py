@@ -4,10 +4,10 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QDialog, QLineEdit
 
 
-class TextReq(QDialog):
-    def __init__(self, conf, prompt="Введите название", parent=None):
+class SettingsPrompt(QDialog):
+    def __init__(self, conf, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Текстовый Запрос")
+        self.setWindowTitle("Настройки")
         self.setWindowFlags(
             Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint
         )
@@ -16,13 +16,12 @@ class TextReq(QDialog):
         self.conf = conf
 
         self.setStyleSheet(conf.paths.style(conf.current_theme))
-        self.setFixedSize(conf.tile * 8, conf.tile)
+        self.setFixedSize(conf.tile * 8, conf.tile * 9)
 
-        self.ans = QLineEdit(self)
-        self.ans.setPlaceholderText(prompt)
-        self.ans.setFixedSize(conf.tile * 7, conf.tile)
-        self.ans.returnPressed.connect(self.accept)
-        self.ans.setFocus()
+        self.cluster_token_input = QLineEdit(self)
+        self.cluster_token_input.setPlaceholderText('Присоединиться к кластеру')
+        self.cluster_token_input.setFixedSize(conf.tile * 7, conf.tile)
+        self.cluster_token_input.returnPressed.connect(self.accept)
 
         self.ok_btn = QPushButton(self)
         self.ok_btn.setToolTip('Подтвердить')
@@ -32,5 +31,11 @@ class TextReq(QDialog):
         self.ok_btn.setIconSize(QSize(int(conf.tile * 0.7), int(conf.tile * 0.7)))
         self.ok_btn.clicked.connect(self.accept)
 
+        self.cluster_token = QLineEdit(self)
+        self.cluster_token.setText(conf.db.get_cluster_token())
+        self.cluster_token.setReadOnly(True)
+        self.cluster_token.setFixedSize(conf.tile * 7, conf.tile)
+        self.cluster_token.move(0, conf.tile)
+
     def get_text(self):
-        return self.ans.text()
+        return self.cluster_token_input.text()

@@ -27,6 +27,7 @@ class MoveNotificationThread(QThread):
                 break
             self.move_window.emit(int(self.x + self.travel * (elapsed / self.duration)), self.y)
 
+
 class Notification(QWidget):
     def __init__(self, config, alive_time=3, text="Готово.", title="Уведомление"):
         super().__init__()

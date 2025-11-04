@@ -69,7 +69,8 @@ class Database:
             self.clear_table('sessions')
             try:
                 data = self.api.auth()['response']
-                self.add_row('sessions', {'user_id': data['user_id'], 'token': data['user_token'], 'cluster_token': data['cluster_token']})
+                self.add_row('sessions', {'user_id': data['user_id'], 'token': data['user_token'],
+                                          'cluster_token': data['cluster_token']})
                 self.conf.notification_manager.show_notification(title='Апория', text='Создан новый пользователь')
                 self.conf.api_auth = True
             except Exception:
@@ -118,11 +119,7 @@ class Database:
         return self.info
 
     def rename_chat(self, id, name):
-        conn = sqlite3.connect(self.path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM sessions LIMIT 1;")
-        c = cursor.fetchone()
-        conn.close()
+        c = self.get_session()
         if 0 < len(name) < 100:
             self.info['chats'][id]['name'] = name
             self.info['chats'][id]['local'] = True
@@ -130,20 +127,12 @@ class Database:
         return data
 
     def delete_chat(self, id):
-        conn = sqlite3.connect(self.path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM sessions LIMIT 1;")
-        c = cursor.fetchone()
-        conn.close()
+        c = self.get_session()
         data = self.api.delete_chat(c[1], c[0], id)
         return data
 
     def create_chat(self, name):
-        conn = sqlite3.connect(self.path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM sessions LIMIT 1;")
-        c = cursor.fetchone()
-        conn.close()
+        c = self.get_session()
         data = self.api.create_chat(c[1], c[0], name)
         return data
 
@@ -163,24 +152,29 @@ class Database:
             if len(old_messages) > len(new_messages):
                 updated['chats'][old_chat_id]['messages'].append(old_messages[-1])
                 updated['chats'][old_chat_id]['ready'] = False
-
-        self.info = updated
-
-
-    def send_message(self, text, id, force=False):
         conn = sqlite3.connect(self.path)
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM sessions LIMIT 1;")
         c = cursor.fetchone()
+        session_id = c[0]
+        cursor.execute(
+            "UPDATE sessions SET cluster_token = ? WHERE rowid = ?;",
+            (updated['cluster_token'], session_id)
+        )
+        conn.commit()
         conn.close()
+        self.info = updated
+
+    def send_message(self, text, id, force=False):
+        c = self.get_session()
         if id not in self.info['chats']:
             if force:
                 self.info['chats'][id] = {'messages': [], 'name': 'новый', 'ready': False}
                 self.info['chats'][id]['messages'] = [{
-            "user_sent": c[0],
-            "text": text,
-            "time": datetime.datetime.now().isoformat(),
-            "local": True}]
+                    "user_sent": c[0],
+                    "text": text,
+                    "time": datetime.datetime.now().isoformat(),
+                    "local": True}]
                 data = self.api.send_message(c[1], c[0], text, id)
                 return data
             return
@@ -200,11 +194,7 @@ class Database:
         data = [i for i in data['response'] if i['id'] not in self.tasks_finished_ids]
         if len(data) == 0:
             return
-        conn = sqlite3.connect(self.path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM sessions LIMIT 1;")
-        c = cursor.fetchone()
-        conn.close()
+        c = self.get_session()
         data = sorted(data, key=lambda x: x['timestamp'])
         self.tasks_finished_ids.append(data[0]['id'])
         ret = execute_agent.execute(data[0]['text'], self.conf)
@@ -215,3 +205,18 @@ class Database:
         new_id = self.create_chat('новый')['response']['id']
         self.send_message(text, new_id, force=True)
         return str(new_id)
+
+    def get_cluster_token(self):
+        return self.info['cluster_token']
+
+    def get_session(self):
+        conn = sqlite3.connect(self.path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sessions LIMIT 1;")
+        c = cursor.fetchone()
+        conn.close()
+        return c
+
+    def set_cluster_token(self, tok):
+        c = self.get_session()
+        self.api.join_cluster(c[1], c[0], tok)

@@ -87,4 +87,5 @@ class Config:
         self.api = Api(self)
         self.db = Database(self)
 
+
 config = Config()

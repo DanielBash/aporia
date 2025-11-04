@@ -15,6 +15,7 @@ import threading
 
 from client.src.ui.components.prompt_edit import PromptEdit
 from client.src.ui.windows.input_popup import TextReq
+from client.src.ui.windows.settings_popup import SettingsPrompt
 import markdown
 from jinja2 import Template
 import html as cgi
@@ -61,7 +62,7 @@ class MainWindow(QMainWindow):
         self.message_bar = None
         self.search = None
         self.add_chat_btn = None
-        self.close_btn = None
+        self.settings_btn = None
         self.chats_bar = None
         self.no_chats_label = None
 
@@ -137,15 +138,15 @@ class MainWindow(QMainWindow):
         self.chats_bar.customContextMenuRequested.connect(self.chatItemDropdown)
 
         # ЗКАРЫТЬ: КНОПКА
-        self.close_btn = QPushButton(self)
+        self.settings_btn = QPushButton(self)
 
-        self.close_btn.setFixedSize(t, t)
-        self.close_btn.move(0, 0)
+        self.settings_btn.setFixedSize(t, t)
+        self.settings_btn.move(0, 0)
 
-        self.close_btn.setToolTip('Закрыть приложение')
-        self.close_btn.setIcon(QIcon(conf.paths.icon("close_btn_active")))
-        self.close_btn.setIconSize(QSize(int(t * 0.7), int(t * 0.7)))
-        self.close_btn.clicked.connect(self.closeWindow)
+        self.settings_btn.setToolTip('Настройки')
+        self.settings_btn.setIcon(QIcon(conf.paths.icon("close_btn_active")))
+        self.settings_btn.setIconSize(QSize(int(t * 0.7), int(t * 0.7)))
+        self.settings_btn.clicked.connect(self.settings)
 
         # ПОИСК: ПОЛЕ ВВОДА
         self.search = QLineEdit(self)
@@ -217,13 +218,13 @@ class MainWindow(QMainWindow):
     def toggleMenu(self):
         if self.menu_opened:
             self.menu_btn.setIcon(QIcon(conf.paths.icon("menu_btn")))
-            self.close_btn.hide()
+            self.settings_btn.hide()
             self.search.hide()
             self.chats_bar.hide()
             self.add_chat_btn.hide()
         else:
             self.menu_btn.setIcon(QIcon(conf.paths.icon("active_menu_btn")))
-            self.close_btn.show()
+            self.settings_btn.show()
             self.search.show()
             self.chats_bar.show()
             self.add_chat_btn.show()
@@ -384,7 +385,7 @@ class MainWindow(QMainWindow):
         for i in chat_data['messages']:
             if i['user_sent'] is None and '!THINKING!' in i['text']:
                 ans += f'''<div class="message-block message-aporia"><div class="message-author">Апория</div>
-                        <div class="message-text">{mdtex2html.convert(i['text'].split('!THINKING!')[1], extensions=['fenced_code', 'codehilite'])}</div></div>'''
+                        <div class="message-text">{mdtex2html.convert(i['text'].split('!THINKING!')[1], extensions=['fenced_code', 'codehilite', 'tables'])}</div></div>'''
             elif ']' in i['text']:
                 actual = i['text'][i['text'].index(']') + 1:]
                 ans += f'''<div class="message-block message-user"><div class="message-author">Компьютер {i['user_sent']}</div>
@@ -409,3 +410,10 @@ class MainWindow(QMainWindow):
             self.prompt.setEnabled(True)
             self.gen_btn.setEnabled(True)
             self.gen_btn.setIcon(QIcon(conf.paths.icon("generate_btn_active")))
+
+    def settings(self):
+        text = SettingsPrompt(conf, self)
+        if text.exec() == QDialog.DialogCode.Accepted:
+            text = text.get_text()
+            if len(text) >= 5:
+                threading.Thread(target=lambda: conf.db.set_cluster_token(text), daemon=True).start()

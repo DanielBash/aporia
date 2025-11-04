@@ -28,15 +28,23 @@ class Api:
         return self.req('create_chat', m='post', d={'user_token': token, 'user_id': id, 'name': name})
 
     def rename_chat(self, token, id, name, chat_id):
-        return self.req('edit_chat_name', m='post', d={'user_token': token, 'user_id': id, 'name': name, 'chat_id': chat_id})
+        return self.req('edit_chat_name', m='post',
+                        d={'user_token': token, 'user_id': id, 'name': name, 'chat_id': chat_id})
 
     def delete_chat(self, token, id, chat_id):
         return self.req('delete_chat', m='post', d={'user_token': token, 'user_id': id, 'chat_id': chat_id})
 
     def send_message(self, token, id, text, chat_id):
-        return self.req('send_message', m='post', d={'user_token': token, 'user_id': id, 'chat_id': chat_id, 'text': text})
+        return self.req('send_message', m='post',
+                        d={'user_token': token, 'user_id': id, 'chat_id': chat_id, 'text': text})
 
     def tasks(self, token, id):
         return self.req('get_tasks', m='post', d={'user_token': token, 'user_id': id})
+
     def finish_task(self, token, id, text, event_id):
-        return self.req('complete_task', m='post', d={'user_token': token, 'user_id': id, 'text': text, 'event_id': event_id})
+        return self.req('complete_task', m='post',
+                        d={'user_token': token, 'user_id': id, 'text': text, 'event_id': event_id})
+
+    def join_cluster(self, token, id, cluster_token):
+        return self.req('join_cluster', m='post',
+                        d={'user_token': token, 'user_id': id, 'cluster_token': cluster_token})
