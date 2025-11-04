@@ -2,12 +2,13 @@ import time
 
 import mdtex2html
 from PyQt6 import QtCore
+from PyQt6.QtWebEngineCore import QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import (QMainWindow, QPushButton,
                              QLineEdit, QTextEdit, QGraphicsOpacityEffect, QListWidget, QListWidgetItem, QLabel,
                              QAbstractItemView, QMenu, QGraphicsBlurEffect, QDialog, QFrame, QWidget, QVBoxLayout,
                              QScrollArea, QTextBrowser)
-from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QRect
+from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QRect, QUrl
 from PyQt6.QtGui import QIcon, QAction, QPainterPath, QColor
 from PyQt6.QtCore import QTimer
 import threading
@@ -360,7 +361,13 @@ class MainWindow(QMainWindow):
         self.prompt.setText('')
         if self.chat_selected:
             threading.Thread(target=lambda: conf.db.send_message(message, self.chat_selected), daemon=True).start()
+        else:
+            new_chat_id = conf.db.send_new(message)
+            QTimer.singleShot(1000, lambda: self.sendMessageSelectChat(new_chat_id))
 
+    def sendMessageSelectChat(self, chat_id):
+        self.chat_selected = chat_id
+        self.updateData(conf.db.get_all())
 
     def updateMessageBar(self):
         chat_data = None
@@ -369,6 +376,7 @@ class MainWindow(QMainWindow):
                 chat_data = self.chats[i]
                 break
         if chat_data is None:
+            self.chat_selected = None
             return
         if self.messages_displayed == chat_data['messages']:
             return
@@ -381,6 +389,9 @@ class MainWindow(QMainWindow):
                 actual = i['text'][i['text'].index(']') + 1:]
                 ans += f'''<div class="message-block message-user"><div class="message-author">Компьютер {i['user_sent']}</div>
                         <div class="message-text">{cgi.escape(actual)}</div></div>'''
+        if not chat_data['ready']:
+            ans += '''<div class="message-block message-aporia"><div class="message-author">Апория</div>
+                      <div class="message-text">Думаю/Выполняю код. Может занять до 5-ти минут</div></div>'''
         if len(chat_data['messages']) == 0:
             self.no_messages_label.show()
         else:
@@ -388,7 +399,7 @@ class MainWindow(QMainWindow):
         styles = conf.paths.css(conf.current_theme)
         html = Template(conf.paths.html('messages')).render(messages=ans, styles=styles)
         self.message_bar.page().setBackgroundColor(QColor(0, 0, 0, 0))
-        self.message_bar.setHtml(html)
+        self.message_bar.setHtml(html, QUrl('file://'))
         self.messages_displayed = chat_data['messages'].copy()
         if not chat_data['ready']:
             self.prompt.setEnabled(False)

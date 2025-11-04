@@ -150,27 +150,40 @@ class Database:
     def update_info(self, info):
         updated = copy.deepcopy(info)
         for i in self.info['chats'].keys():
+            if i not in info['chats'].keys():
+                continue
             if info['chats'][i]['name'] != self.info['chats'][i]['name']:
                 if 'local' in self.info['chats'][i].keys():
                     updated['chats'][i] = self.info['chats'][i]
         for old_chat_id in self.info['chats'].keys():
             if old_chat_id not in updated['chats'].keys():
                 continue
-            old_messages = self.info['chats'][old_chat_id]
-            new_messages = updated['chats'][old_chat_id]
+            old_messages = self.info['chats'][old_chat_id]['messages']
+            new_messages = updated['chats'][old_chat_id]['messages']
             if len(old_messages) > len(new_messages):
-                updated['chats'][old_chat_id].append(old_messages[-1])
+                updated['chats'][old_chat_id]['messages'].append(old_messages[-1])
                 updated['chats'][old_chat_id]['ready'] = False
 
         self.info = updated
 
 
-    def send_message(self, text, id):
+    def send_message(self, text, id, force=False):
         conn = sqlite3.connect(self.path)
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM sessions LIMIT 1;")
         c = cursor.fetchone()
         conn.close()
+        if id not in self.info['chats']:
+            if force:
+                self.info['chats'][id] = {'messages': [], 'name': 'новый', 'ready': False}
+                self.info['chats'][id]['messages'] = [{
+            "user_sent": c[0],
+            "text": text,
+            "time": datetime.datetime.now().isoformat(),
+            "local": True}]
+                data = self.api.send_message(c[1], c[0], text, id)
+                return data
+            return
         self.info['chats'][id]['messages'].append({
             "user_sent": c[0],
             "text": text,
@@ -197,3 +210,8 @@ class Database:
         ret = execute_agent.execute(data[0]['text'], self.conf)
         res = self.api.finish_task(c[1], c[0], ret, data[0]['id'])
         return res
+
+    def send_new(self, text):
+        new_id = self.create_chat('новый')['response']['id']
+        self.send_message(text, new_id, force=True)
+        return str(new_id)

@@ -91,7 +91,7 @@ def create_chat():
     db.session.add(chat)
     db.session.commit()
 
-    return gen_response()
+    return gen_response({'id': chat.id})
 
 
 @bp.route('/edit_chat_name', methods=['POST'])
@@ -191,7 +191,7 @@ def get_events():
     return gen_response(ans)
 
 
-@bp.route('/complete_event', methods=['POST'])
+@bp.route('/complete_task', methods=['POST'])
 @limiter.limit("60 per minute")
 @token_required
 def complete_event():

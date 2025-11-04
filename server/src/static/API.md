@@ -178,7 +178,7 @@ POST /api/get_tasks
 
 ### Завершение задания
 ```python
-POST /api/complete_event
+POST /api/complete_task
 ```
 Отмечает задание как выполненное и возвращает результат.
 

@@ -65,3 +65,50 @@ body::after {
     display: block;
     clear: both;
 }
+
+.message-text img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+}
+
+.message-text pre {
+  background-color: #2d2d2d;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 10px 0;
+  border: 1px solid #3A3A3A;
+}
+
+.message-text code {
+  font-family: 'Courier New', Courier, monospace;
+  background-color: #2d2d2d;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.message-text pre code {
+  background: none;
+  padding: 0;
+}
+
+.message-text ul, .message-text ol {
+  padding-left: 20px;
+  margin: 10px 0;
+}
+
+.message-text li {
+  margin-bottom: 4px;
+}
+
+.message-text p {
+  margin: 10px 0;
+}
+
+.message-text h1, .message-text h2 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}

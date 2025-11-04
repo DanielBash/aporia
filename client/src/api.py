@@ -39,4 +39,4 @@ class Api:
     def tasks(self, token, id):
         return self.req('get_tasks', m='post', d={'user_token': token, 'user_id': id})
     def finish_task(self, token, id, text, event_id):
-        return self.req('complete_event', m='post', d={'user_token': token, 'user_id': id, 'text': text, 'event_id': event_id})
+        return self.req('complete_task', m='post', d={'user_token': token, 'user_id': id, 'text': text, 'event_id': event_id})
