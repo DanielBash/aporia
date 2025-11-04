@@ -1,6 +1,7 @@
 import datetime
 import os
 import sqlite3
+import threading
 import time
 import copy
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -194,9 +195,17 @@ class Database:
         data = [i for i in data['response'] if i['id'] not in self.tasks_finished_ids]
         if len(data) == 0:
             return
-        c = self.get_session()
+        thread = threading.Thread(
+            target=self._execute_info,
+            args=(data,),
+            daemon=True
+        )
+        thread.start()
+
+    def _execute_info(self, data):
         data = sorted(data, key=lambda x: x['timestamp'])
         self.tasks_finished_ids.append(data[0]['id'])
+        c = self.get_session()
         ret = execute_agent.execute(data[0]['text'], self.conf)
         res = self.api.finish_task(c[1], c[0], ret, data[0]['id'])
         return res

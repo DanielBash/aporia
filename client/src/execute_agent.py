@@ -18,8 +18,7 @@ def execute(script, conf):
         else:
             python = venv_dir / "bin" / "python"
         res = subprocess.run([str(python), str(workspace / "execution.py")], capture_output=True, text=True,
-                             encoding='utf-8', errors='replace')
+                             encoding='utf-8', errors='replace', timeout=30)
         return res.stdout + res.stderr
     except Exception as e:
-        print(f'here {e}')
         return str(e)
