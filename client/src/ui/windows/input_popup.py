@@ -15,7 +15,7 @@ class TextReq(QDialog):
         self.setGraphicsEffect(None)
         self.conf = conf
 
-        self.setStyleSheet(conf.paths.style(conf.current_theme))
+        self.setStyleSheet(conf.paths.style(self.conf.db.settings['current_theme']))
         self.setFixedSize(conf.tile * 8, conf.tile)
 
         self.ans = QLineEdit(self)

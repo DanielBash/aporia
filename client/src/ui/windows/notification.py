@@ -49,7 +49,7 @@ class Notification(QWidget):
                             Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setWindowIcon(QIcon(conf.paths.icon("icon")))
-        self.setStyleSheet(conf.paths.style(conf.current_theme))
+        self.setStyleSheet(conf.paths.style(conf.db.settings['current_theme']))
 
     def show_up(self):
         self.thread = MoveNotificationThread(self.x(), self.y(), 1, -self.width())

@@ -1,8 +1,8 @@
-from PyQt6.QtWidgets import QTextEdit
+from PyQt6.QtWidgets import QTextEdit, QPlainTextEdit
 from PyQt6.QtCore import pyqtSignal, Qt
 
 
-class PromptEdit(QTextEdit):
+class PromptEdit(QPlainTextEdit):
     returnPressed = pyqtSignal()
 
     def keyPressEvent(self, event):

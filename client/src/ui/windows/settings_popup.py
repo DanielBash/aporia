@@ -15,7 +15,7 @@ class SettingsPrompt(QDialog):
         self.setGraphicsEffect(None)
         self.conf = conf
 
-        self.setStyleSheet(conf.paths.style(conf.current_theme))
+        self.setStyleSheet(conf.paths.style(conf.db.settings['current_theme']))
         self.setFixedSize(conf.tile * 8, conf.tile * 9)
 
         self.cluster_token_input = QLineEdit(self)
@@ -32,7 +32,7 @@ class SettingsPrompt(QDialog):
         self.ok_btn.clicked.connect(self.accept)
 
         self.cluster_token = QLineEdit(self)
-        self.cluster_token.setText(conf.db.get_cluster_token())
+        self.cluster_token.setText(conf.db.session_data['cluster_token'])
         self.cluster_token.setReadOnly(True)
         self.cluster_token.setFixedSize(conf.tile * 7, conf.tile)
         self.cluster_token.move(0, conf.tile)

@@ -31,30 +31,30 @@ class Paths:
         return str(self.icons_dir / (name + '.png'))
 
     def style(self, name, extract_text=True):
-        dir = self.style_dir / (name + '.qss')
+        directory = self.style_dir / (name + '.qss')
         if extract_text:
-            return dir.read_text()
+            return directory.read_text()
         else:
-            return dir
+            return directory
 
     def css(self, name, extract_text=True):
-        dir = self.style_dir / (name + '.css')
+        directory = self.style_dir / (name + '.css')
         if extract_text:
-            return dir.read_text()
+            return directory.read_text()
         else:
-            return dir
+            return directory
 
     def html(self, name, extract_text=True):
-        dir = self.html_dir / (name + '.html')
+        directory = self.html_dir / (name + '.html')
         if extract_text:
-            return dir.read_text()
+            return directory.read_text()
         else:
-            return dir
+            return directory
 
 
 @dataclass
 class Config:
-    """General application settings"""
+    """General application settings and common variable references"""
 
     # Main settings
     assistant_name = 'Апория'
@@ -62,30 +62,29 @@ class Config:
 
     server_host = 'https://aporia.ibashlhr.beget.tech/api'
 
-    feed_check_timeout = 1
-
-    # Path settings
-    paths = Paths()
+    server_pull_interval = 1
 
     # Notification settings
-    notification_manager = None
     notifications_on = True
     notification_alive_time = 5
 
-    # Network debug
-    api_auth = False
-
     # User settings
-    open_window_shortcut = 'ctrl+shift+h'
     enable_shortcut = False
-
-    current_theme = 'dark'
     tile = 40
+    default_chat_name = 'Новый чат'
+
+    default_settings = {
+        "notifications": True,
+        "open_window_shortcut": "ctrl+shift+h",
+        "current_theme": "light",
+    }
 
     def __init__(self):
+        self.paths = Paths()
         self.notification_manager = Manager(self)
         self.api = Api(self)
         self.db = Database(self)
 
 
+# Creating config instance
 config = Config()

@@ -29,6 +29,22 @@ QTextEdit:focus {
     background: #FAFDFF;
 }
 
+QPlainTextEdit {
+    border-radius: 20px;
+    border: 1px solid #E0E0E0;
+    padding: 7px 5px;
+    font-size: 14px;
+    background: #FFFFFF;
+    color: #333333;
+    selection-background-color: #2196F3;
+    selection-color: #FFFFFF;
+}
+
+QPlainTextEdit:focus {
+    border: 1px solid #2196F3;
+    background: #FAFDFF;
+}
+
 /* Q PUSH BUTTON */
 
 QPushButton {

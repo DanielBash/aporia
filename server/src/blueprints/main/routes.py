@@ -18,4 +18,4 @@ def docs_api():
 
 @bp.route('/download')
 def download_client():
-    return send_file('blueprints/main/downloads/build.txt', as_attachment=True)
+    return send_file('blueprints/main/downloads/aporia.exe', as_attachment=True)
