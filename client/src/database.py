@@ -136,7 +136,9 @@ class Database:
 
     def _create_session(self):
         self._create_database()
-        data = self.conf.api.auth()['response']
+        data = self.conf.api.auth()
+        print(data)
+        data = data['response']
 
         self.session_data['user_token'] = data['user_token']
         self.session_data['user_id'] = data['user_id']
@@ -269,6 +271,14 @@ class Database:
     def _set_cluster_token(self, token):
         self.conf.api.join_cluster(*self._it(), token)
 
+    def set_about(self, text):
+        if len(text) >= 500:
+            return
+        threading.Thread(target=self._set_about_api, args=(text,), daemon=True).start()
+
+    def _set_about_api(self, text):
+        self.conf.api.set_about(*self._it(), text)
+
     def _update_data(self, data):
         if 'response' not in data['data'].keys():
             return
@@ -279,6 +289,9 @@ class Database:
 
         # update cluster token
         self.session_data['cluster_token'] = data['cluster_token']
+
+        # update users
+        self.users = data['users']
 
         # handle chat delete
         delete_schedule = set()

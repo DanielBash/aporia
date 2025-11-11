@@ -3,7 +3,7 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import (QMainWindow, QPushButton,
                              QLineEdit, QGraphicsOpacityEffect, QListWidget, QListWidgetItem, QLabel,
                              QAbstractItemView, QMenu, QDialog, QFrame)
-from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QUrl
+from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QUrl, QPoint
 from PyQt6.QtGui import QIcon, QAction, QColor
 from PyQt6.QtCore import QTimer
 from client.src.ui.components.prompt_edit import PromptEdit
@@ -70,7 +70,26 @@ class MainWindow(QMainWindow):
 
         self.database_worker = None
 
+        self.dragging = False
+        self.drag_position = QPoint()
+
         self.setupWindow(pos)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.dragging = True
+            self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.MouseButton.MiddleButton and self.dragging:
+            self.move(event.globalPosition().toPoint() - self.drag_position)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.dragging = False
+            event.accept()
 
     def setupWindow(self, pos):
         self.setWindowTitle(f'{self.conf.assistant_name}')
@@ -133,7 +152,7 @@ class MainWindow(QMainWindow):
         self.chats_bar.move(0, t + 1)
         self.chats_bar.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.chats_bar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.chats_bar.itemClicked.connect(self.select_chat)
+        self.chats_bar.itemSelectionChanged.connect(self.select_chat)
         self.chats_bar.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.chats_bar.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.chats_bar.customContextMenuRequested.connect(self.chat_item_dropdown)
@@ -223,8 +242,12 @@ class MainWindow(QMainWindow):
 
     def _prompt_edited(self):
         t = self.conf.tile
-        h = self.prompt.document().size().height()
-        h = max(min(int(h) + 5, 120), t)
+        line_height = self.prompt.fontMetrics().lineSpacing()
+        line_count = self.prompt.document().blockCount()
+
+        h = line_height * line_count + 10
+        h = max(min(int(h), 120), t)
+
         if h != self.prompt.height():
             self.prompt.setFixedHeight(h)
         self.prompt.move(t * 5, t * 8 + 40 - h)
@@ -270,10 +293,15 @@ class MainWindow(QMainWindow):
                 self.chats_bar.setCurrentItem(item)
 
     def select_chat(self):
-        item = self.chats_bar.currentItem()
-        if item:
+        selected_items = self.chats_bar.selectedItems()
+
+        if selected_items:
+            item = selected_items[0]
             self.chat_selected = item.data(50)
-            self.update_data()
+        else:
+            self.chat_selected = None
+
+        self.update_data()
 
     def chat_item_dropdown(self, pos):
         item = self.chats_bar.itemAt(pos)
@@ -329,13 +357,15 @@ class MainWindow(QMainWindow):
         chat = self._get_chat_by(local_id=self.chat_selected)
         if chat is None:
             self.chat_selected = None
-            self.no_messages_label.show()
+            self.no_messages_label.hide()
             self.message_bar.hide()
             self.messages_border.hide()
         else:
             self.no_messages_label.hide()
             self.messages_border.show()
             self.message_bar.show()
+            if len(chat['messages']) == 0:
+                self.no_messages_label.show()
 
             if not chat['ready']:
                 self.prompt.setEnabled(False)
@@ -358,7 +388,6 @@ class MainWindow(QMainWindow):
 
         ans = ''
         for i in chat['messages']:
-            print(i)
             if i['user_sent'] is None and '!THINKING!' in i['text']:
                 ans += f'''<div class="message-block message-aporia"><div class="message-author">Апория</div>
                         <div class="message-text">{mdtex2html.convert(i['text'].split('!THINKING!')[1], extensions=['fenced_code', 'codehilite', 'tables'])}</div></div>'''
@@ -383,6 +412,10 @@ class MainWindow(QMainWindow):
     def settings(self):
         text = SettingsPrompt(self.conf, self)
         if text.exec() == QDialog.DialogCode.Accepted:
-            text = text.get_text()
-            if len(text) >= 5:
-                self.conf.db.set_cluster_token(text)
+            data = text.get_data()
+            if len(data['cluster_token']) >= 5:
+                self.conf.db.set_cluster_token(data['cluster_token'])
+            if len(data['about']) >= 1:
+                self.conf.db.set_about(data['about'])
+            self.conf.db.settings['current_theme'] = data['current_theme']
+            self.conf.db._save_session()

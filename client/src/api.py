@@ -48,3 +48,7 @@ class Api:
     def join_cluster(self, token, id, cluster_token):
         return self.req('join_cluster', m='post',
                         d={'user_token': token, 'user_id': id, 'cluster_token': cluster_token})
+
+    def set_about(self, token, id, text):
+        return self.req('set_about', m='post',
+                        d={'user_token': token, 'user_id': id, 'text': text})

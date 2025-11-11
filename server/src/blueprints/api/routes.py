@@ -53,7 +53,7 @@ def get_info():
         for message in chat.messages:
             temp['chats'][str(chat.id)]['messages'].append({'user_sent': message.user_id, 'text': message.text, 'time': message.created_at})
     for user_i in user.cluster.users:
-        temp['users'].append({'user_id': user_i.id, 'about': user_i.about})
+        temp['users'].append({'user_id': user_i.id, 'about': user_i.about, 'last_online': time.time() - user_i.last_online.timestamp()})
     return gen_response(temp)
 
 
@@ -73,6 +73,23 @@ def join_cluster():
 
     user.cluster_id = target.id
     db.session.commit()
+
+    return gen_response()
+
+@bp.route('/set_about', methods=['POST'])
+@limiter.limit("60 per minute")
+@token_required
+def join_cluster():
+    user = request.user
+    try:
+        about_text = request.get_json()['text']
+    except Exception:
+        return gen_response({'comment': 'Invalid cluster token'}, status='ERROR', code=400)
+    if len(about_text) <= 500:
+        user.about = about_text
+        db.session.commit()
+    else:
+        return gen_response({'comment': 'Text is too big'}, status='ERROR', code=400)
 
     return gen_response()
 
@@ -287,7 +304,7 @@ def start_ai(app_context, chat_id, message_id, text):
                     ans += f'Код для компьютера {task.user.id}. stdout: {task.return_text}\n'
                 ans += 'Все? Если ты все закончил/узнал что надо, не выводи в следующем ответе код. Если можно улучшить результат, можно исполнить еще код.'
             hist = [{"role": 'system', "content": SYSTEM_PROMPT_DEEPSEEK_ANSWERING}] + hist[1:] + [{"role": 'assistant', "content": 'STARTED THINKING' + ans + 'ENDED THINKING'}]
-            response = client.chat.completions.create(model="deepseek-chat", messages=hist, temperature=0.7, stream=False)
+            response = client.chat.completions.create(model="deepseek-chat", messages=hist, temperature=1.5, stream=False)
             ans = ans + '!THINKING!' + response.choices[0].message.content
             message = Message(chat_id=chat_id, text=ans)
             db.session.add(message)

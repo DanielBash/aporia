@@ -38,7 +38,7 @@ class User(db.Model, Timestamp):
 
 class Chat(db.Model, Timestamp):
     __tablename__ = 'chats'
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(256), nullable=False)
 
     cluster_id = db.Column(db.Integer, db.ForeignKey('clusters.id'))
@@ -55,7 +55,7 @@ class Chat(db.Model, Timestamp):
 
 class Message(db.Model, Timestamp):
     __tablename__ = 'messages'
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     text = db.Column(db.Text, nullable=False)
 
     chat_id = db.Column(db.Integer, db.ForeignKey('chats.id', ondelete='CASCADE'), nullable=False)
@@ -67,7 +67,7 @@ class Message(db.Model, Timestamp):
 
 class EventStack(db.Model, Timestamp):
     __tablename__ = 'events'
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     text = db.Column(db.Text, nullable=False)
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
