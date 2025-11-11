@@ -242,12 +242,9 @@ class MainWindow(QMainWindow):
 
     def _prompt_edited(self):
         t = self.conf.tile
-        line_height = self.prompt.fontMetrics().lineSpacing()
-        line_count = self.prompt.document().blockCount()
-
-        h = line_height * line_count + 10
-        h = max(min(int(h), 120), t)
-
+        self.changed = True
+        h = self.prompt.document().size().height()
+        h = max(min(int(h) + 5, 120), t)
         if h != self.prompt.height():
             self.prompt.setFixedHeight(h)
         self.prompt.move(t * 5, t * 8 + 40 - h)
