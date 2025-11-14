@@ -1,4 +1,3 @@
-from PyQt5.QtWidgets import QTextEdit
 from PyQt6.QtWidgets import QTabWidget, QWidget, QLabel, QComboBox
 from PyQt6.QtWidgets import QPushButton
 from PyQt6.QtCore import Qt, QSize

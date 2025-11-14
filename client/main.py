@@ -21,7 +21,7 @@ class MainApp:
         self.windowNeeds.start(100)
 
         if conf.enable_shortcut:
-            keyboard.add_hotkey(conf.open_window_shortcut, self.timeToShowWindow)
+            keyboard.add_hotkey(conf.db.settings['open_window_shortcut'], self.timeToShowWindow)
 
         self.setupTray()
 

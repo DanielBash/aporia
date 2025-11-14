@@ -168,6 +168,7 @@ QComboBox {
     font-size: 14px;
     background: #FFFFFF;
     color: #333333;
+    padding: 10px;
     selection-background-color: #2196F3;
     selection-color: #FFFFFF;
 }
@@ -180,6 +181,13 @@ QComboBox:hover {
 QComboBox:focus {
     border: 1px solid #2196F3;
     background: #FAFDFF;
+}
+QComboBox::drop-down {
+    width: 0px;
+    border: none;
+}
+QComboBox::down-arrow {
+    image: none;
 }
 
 /* Q TAB WIDGET */

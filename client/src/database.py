@@ -5,7 +5,7 @@ import threading
 import time
 import copy
 from PyQt6.QtCore import QThread, pyqtSignal
-from client.src import execute_agent
+from . import execute_agent
 import random
 
 

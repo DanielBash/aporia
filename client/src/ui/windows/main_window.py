@@ -6,9 +6,9 @@ from PyQt6.QtWidgets import (QMainWindow, QPushButton,
 from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QUrl, QPoint
 from PyQt6.QtGui import QIcon, QAction, QColor
 from PyQt6.QtCore import QTimer
-from client.src.ui.components.prompt_edit import PromptEdit
-from client.src.ui.windows.input_popup import TextReq
-from client.src.ui.windows.settings_popup import SettingsPrompt
+from ..components.prompt_edit import PromptEdit
+from ..windows.input_popup import TextReq
+from ..windows.settings_popup import SettingsPrompt
 from jinja2 import Template
 import html as cgi
 from copy import deepcopy
@@ -279,7 +279,7 @@ class MainWindow(QMainWindow):
         if str(display_chats) == str(self.chats_displayed):
             return
         else:
-            self.chats_displayed = display_chats
+            self.chats_displayed = deepcopy(display_chats)
 
         self.chats_bar.clear()
         for i in self.chats_displayed:
@@ -296,7 +296,7 @@ class MainWindow(QMainWindow):
             item = selected_items[0]
             self.chat_selected = item.data(50)
         else:
-            self.chat_selected = None
+            pass
 
         self.update_data()
 
@@ -322,12 +322,14 @@ class MainWindow(QMainWindow):
         if id == self.chat_selected:
             self.chat_selected = None
         self.conf.db.delete_chat(local_id)
+        self.update_data()
 
     def rename_chat(self, local_id):
         text = TextReq(self.conf, 'Введите новое название', parent=self)
         if text.exec() == QDialog.DialogCode.Accepted:
             text = text.get_text()
             self.conf.db.rename_chat(local_id, text)
+        self.update_data()
 
     def add_chat(self):
         text = TextReq(self.conf, 'Введите название чата', parent=self)
