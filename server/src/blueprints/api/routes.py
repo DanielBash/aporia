@@ -79,7 +79,7 @@ def join_cluster():
 @bp.route('/set_about', methods=['POST'])
 @limiter.limit("60 per minute")
 @token_required
-def join_cluster():
+def set_about():
     user = request.user
     try:
         about_text = request.get_json()['text']
