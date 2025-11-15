@@ -1,15 +1,18 @@
 import os
 import threading
 import time
+from pathlib import Path
 
-from flask import Blueprint, request, current_app
+from flask import Blueprint, request, current_app, jsonify
 from app import db, SECRET_KEY, limiter
 from .utils import gen_token, is_token_valid, gen_response, token_required, check_string, get_chat_as_dict, \
     get_code_from_str, extract_code_metadata
 from models import User, Cluster, Chat, Message, EventStack
 from .settings import DEEPSEEK_API_KEY, SYSTEM_PROMPT_DEEPSEEK_MAKING, SYSTEM_PROMPT_DEEPSEEK_ANSWERING, \
-    WAITING_FOR_RESPONSE_TIMEOUT, USER_OFFLINE_TIMEOUT
+    WAITING_FOR_RESPONSE_TIMEOUT, USER_OFFLINE_TIMEOUT, MAX_FILE_SIZE, UPLOAD_FOLDER
 from openai import OpenAI
+from werkzeug.utils import secure_filename
+from flask import send_file
 
 
 bp = Blueprint('api', __name__)
@@ -315,3 +318,100 @@ def start_ai(app_context, chat_id, message_id, text):
             chat = Chat.query.get(chat_id)
             chat.ready = True
             db.session.commit()
+
+
+@bp.route('/send_file', methods=['POST'])
+@limiter.limit("60 per minute")
+def send_storage_file():
+    data = request.form
+
+    if not data or 'user_token' not in data or 'user_id' not in data:
+        return gen_response({'comment': 'Received incomplete data'}, status='ERROR', code=400)
+
+    user = User.query.get(data['user_id'])
+
+    if user is None or not is_token_valid(data['user_token'], user.token, SECRET_KEY):
+        return gen_response({'comment': 'Invalid auth token'}, status='ERROR', code=400)
+
+    token = str(user.cluster.token)
+
+    if 'file' not in request.files:
+        return gen_response({'comment': 'No file selected'}, status='ERROR', code=400)
+
+    file = request.files['file']
+    if file.filename == '':
+        return gen_response({'comment': 'The filename isnt correct'}, status='ERROR', code=400)
+    filename = secure_filename(file.filename)
+
+    file_size = request.content_length
+    if file_size is None:
+        pass
+    elif file_size > MAX_FILE_SIZE:
+        return gen_response({'comment': 'File exceeds file limit'}, status='ERROR', code=400)
+
+    os.makedirs(str(UPLOAD_FOLDER / token), exist_ok=True)
+    file_path = os.path.join(str(UPLOAD_FOLDER / token), filename)
+    try:
+        file.save(file_path)
+
+        return jsonify({
+            'message': 'File uploaded successfully',
+            'filename': filename,
+            'size': file_size,
+            'user_id': user.id
+        }), 200
+
+    except Exception:
+        return jsonify({'error': f'Failed to save file'}), 500
+
+
+@bp.route('/get_file', methods=['POST'])
+@limiter.limit("60 per minute")
+def get_storage_file():
+    data = request.get_json()
+
+    required_fields = ['user_token', 'user_id', 'file']
+    if not data or any(field not in data for field in required_fields):
+        return gen_response({'comment': 'Received incomplete data'}, status='ERROR', code=400)
+
+    user = User.query.get(data['user_id'])
+
+    if user is None or not is_token_valid(data['user_token'], user.token, SECRET_KEY):
+        return gen_response({'comment': 'Invalid auth token'}, status='ERROR', code=400)
+
+    token = str(user.cluster.token)
+    filename = secure_filename(data['file'])
+
+    if not filename:
+        return gen_response({'comment': 'Invalid filename'}, status='ERROR', code=400)
+
+    file_path = Path(str(os.path.join(str(UPLOAD_FOLDER / token), filename)))
+
+    if not file_path.exists() or not file_path.is_file():
+        return gen_response({'comment': 'File not found'}, status='ERROR', code=404)
+    file_size = file_path.stat().st_size
+    if file_size > MAX_FILE_SIZE:
+        return gen_response({'comment': 'File too large'}, status='ERROR', code=400)
+
+    try:
+        file_ext = file_path.suffix.lower()
+        mimetype = None
+
+        if file_ext in ['.txt', '.py', '.js', '.css', '.html']:
+            mimetype = f'text/{file_ext[1:]}' if file_ext != '.txt' else 'text/plain'
+        elif file_ext in ['.jpg', '.jpeg']:
+            mimetype = 'image/jpeg'
+        elif file_ext == '.png':
+            mimetype = 'image/png'
+        elif file_ext == '.pdf':
+            mimetype = 'application/pdf'
+
+        return send_file(
+            str(file_path),
+            as_attachment=True,
+            download_name=filename,
+            mimetype=mimetype,
+            conditional=True
+        )
+    except Exception as e:
+        return gen_response({'comment': f'Error retrieving file {e}'}, status='ERROR', code=500)
