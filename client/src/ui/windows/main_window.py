@@ -1,7 +1,10 @@
 import mdtex2html
+import os
+os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--enable-gpu-rasterization --ignore-gpu-blocklist"
+from PyQt6.QtWebEngineCore import QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import (QMainWindow, QPushButton,
-                             QLineEdit, QGraphicsOpacityEffect, QListWidget, QListWidgetItem, QLabel,
+                             QLineEdit, QListWidget, QListWidgetItem, QLabel,
                              QAbstractItemView, QMenu, QDialog, QFrame)
 from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QUrl, QPoint
 from PyQt6.QtGui import QIcon, QAction, QColor
@@ -12,7 +15,6 @@ from ..windows.settings_popup import SettingsPrompt
 from jinja2 import Template
 import html as cgi
 from copy import deepcopy
-
 
 # DATABASE SYNC
 class DatabaseWorker(QThread):
@@ -32,6 +34,7 @@ class DatabaseWorker(QThread):
             if str(data) != str(self.prev_data):
                 self.changed.emit(data)
                 self.prev_data = deepcopy(data)
+            QThread.msleep(100)
 
     def stop(self):
         self.running = False
@@ -189,6 +192,12 @@ class MainWindow(QMainWindow):
         self.message_bar.hide()
         self.message_bar.page().setBackgroundColor(QColor(0, 0, 0, 0))
         self.message_bar.setHtml('')
+
+        settings = self.message_bar.settings()
+        settings.setAttribute(QWebEngineSettings.WebAttribute.WebGLEnabled, False)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.Accelerated2dCanvasEnabled, False)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.ScrollAnimatorEnabled, False)
 
         # ПОДСКАЗКА: НЕТ ЧАТОВ
         self.no_chats_label = QLabel(self)

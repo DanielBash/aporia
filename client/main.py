@@ -18,7 +18,7 @@ class MainApp:
 
         self.windowNeeds = QTimer()
         self.windowNeeds.timeout.connect(self.showWindow)
-        self.windowNeeds.start(100)
+        self.windowNeeds.start(200)
 
         if conf.enable_shortcut:
             keyboard.add_hotkey(conf.db.settings['open_window_shortcut'], self.timeToShowWindow)
@@ -31,12 +31,9 @@ class MainApp:
         menu = QMenu()
         exit_action = menu.addAction("Выключить")
         open_action = menu.addAction("Открыть")
-        settings_action = menu.addAction("Настройки")
 
         exit_action.triggered.connect(self.exit)
         open_action.triggered.connect(self.timeToShowWindowCenter)
-        settings_action.triggered.connect(self.timeToShowWindowCenter)
-
         tray = QSystemTrayIcon(QIcon(conf.paths.icon('icon_active')), self.app)
         tray.activated.connect(self.tray)
         tray.setContextMenu(menu)

@@ -21,17 +21,24 @@ subprocess.check_call([sys.executable, '-m', 'pip', 'install', '<module_name>'])
 4) Если пользователь просит прикрепить видео, то преврати его в .gif, чтобы агент смог его показать.
 5) Если пользователь прямо не просит что-то сделать, не делай!! Не выводи код, если пользователь ничего не попросил
 6) Чтобы передать файл на любой другой компьютер кластера, используй:
+
+Отправить локальный файл всем компьютерам кластера:
 ```python
 # ID:3
 
 import utils
 
-# ... код
-utils.send_file(ABSOLUTE_FILE_PATH) # home/users/daniel/image.jpg
-# ... код
-utils.get_file(ONLY_FILE_NAME) # image.jpg, you will receive initial file
-# ... код
+with open('test.txt', encoding='utf-8') as file:
+    utils.send_file(file)
 ```
+
+Получить общий файл с компьютера:
+```python
+# ID:4
+
+utils.get_file(base_filename) # tree.png, if you sent /home/tree.png
+```
+
 Вот список доступных ID компьютеров и их описания от пользователя(возможно, компьютер только один):
 '''
 

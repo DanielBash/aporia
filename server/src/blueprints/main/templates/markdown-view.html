@@ -16,16 +16,57 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
+            position: relative;
         }
         zero-md {
             max-width: 700px;
             width: 90%;
             padding: 2rem;
             border-radius: 20px;
+            margin-bottom: 60px; /* Space for footer */
+        }
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            padding: 12px 20px;
+            font-size: 0.85rem;
+            color: #666;
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(5px);
+            border-top-right-radius: 8px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+            z-index: 100;
+            display: flex;
+            gap: 15px;
+        }
+        footer span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        footer span:not(:last-child)::after {
+            content: "•";
+            margin-left: 15px;
+            color: #ccc;
+        }
+        @media (max-width: 600px) {
+            footer {
+                flex-direction: column;
+                gap: 5px;
+            }
+            footer span:not(:last-child)::after {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
     <zero-md src="{{ url_for('static', filename=contents + '.md') }}"></zero-md>
+    <footer>
+        <span>{{users_count}} пользователей</span>
+        <span>{{messages_count}} сообщений</span>
+        <span>{{code_executions}} исполненных скриптов</span>
+    </footer>
 </body>
 </html>

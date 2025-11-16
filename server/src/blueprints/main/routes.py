@@ -1,5 +1,7 @@
 import os
 from flask import Blueprint, render_template, send_file
+from models import User, Cluster, Chat, Message, EventStack
+from app import db
 
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -10,11 +12,19 @@ bp = Blueprint('main', __name__, template_folder=template_dir)
 
 @bp.route('/')
 def docs_welcome():
-    return render_template('markdown-view.html', contents='WELCOME', title='Апория: Главная')
+    users_count = User.query.count()
+    messages_count = Message.query.count()
+    code_executions = EventStack.query.count()
+    return render_template('markdown-view.html', contents='WELCOME', title='Апория: Главная',
+                           users_count=users_count, messages_count=messages_count, code_executions=code_executions)
 
 @bp.route('/api')
 def docs_api():
-    return render_template('markdown-view.html', contents='API', title='Апория: API')
+    users_count = User.query.count()
+    messages_count = Message.query.count()
+    code_executions = EventStack.query.count()
+    return render_template('markdown-view.html', contents='API', title='Апория: API',
+                           users_count=users_count, messages_count=messages_count, code_executions=code_executions)
 
 @bp.route('/download')
 def download_client():

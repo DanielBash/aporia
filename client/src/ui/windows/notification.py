@@ -1,8 +1,7 @@
 import time
 
-from PyQt6.QtWidgets import (QMainWindow, QPushButton,
-                             QLineEdit, QTextEdit, QGraphicsOpacityEffect, QWidget, QLabel, QFrame)
-from PyQt6.QtCore import Qt, QSize, QPropertyAnimation, pyqtProperty, QThread, pyqtSignal
+from PyQt6.QtWidgets import QWidget, QLabel, QFrame
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QTimer
 

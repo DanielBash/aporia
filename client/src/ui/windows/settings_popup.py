@@ -13,7 +13,6 @@ class SettingsPrompt(QDialog):
             Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setGraphicsEffect(None)
         self.conf = conf
 
         self.setStyleSheet(conf.paths.style(conf.db.settings['current_theme']))
@@ -55,7 +54,7 @@ class SettingsPrompt(QDialog):
         for i in self.conf.db.users:
             computer_tab = QWidget()
             if i['about'] is None:
-                i['about'] = 'пусто.'
+                i['about'] = ''
             online_text = int(i['last_online'])
             if online_text > 3:
                 online_text = 'ОФФЛАЙН'
@@ -68,12 +67,13 @@ class SettingsPrompt(QDialog):
                 tab_name = 'Этот компьютер'
                 self.change_about = QLineEdit(computer_tab)
                 self.change_about.setPlaceholderText('Поменять описание')
-                self.change_about.setFixedSize(self.conf.tile * 7, self.conf.tile)
+                self.change_about.setFixedSize(self.conf.tile * 8, self.conf.tile)
                 self.change_about.move(0, 50)
-                self.change_about.setText(i['about'])
+                if i['about'] != 'пусто.':
+                    self.change_about.setText(i['about'])
 
                 self.theme_select = QComboBox(computer_tab)
-                self.theme_select.setFixedSize(self.conf.tile * 7, self.conf.tile)
+                self.theme_select.setFixedSize(self.conf.tile * 8, self.conf.tile)
                 self.theme_select.move(0, 100)
 
                 styles_path = self.conf.paths.style_dir
