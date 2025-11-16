@@ -14,7 +14,6 @@ from openai import OpenAI
 from werkzeug.utils import secure_filename
 from flask import send_file
 
-
 bp = Blueprint('api', __name__)
 
 client = OpenAI(
@@ -54,9 +53,11 @@ def get_info():
     for chat in user.cluster.chats:
         temp['chats'][str(chat.id)] = {'name': chat.name, 'ready': chat.ready, 'messages': []}
         for message in chat.messages:
-            temp['chats'][str(chat.id)]['messages'].append({'user_sent': message.user_id, 'text': message.text, 'time': message.created_at})
+            temp['chats'][str(chat.id)]['messages'].append(
+                {'user_sent': message.user_id, 'text': message.text, 'time': message.created_at})
     for user_i in user.cluster.users:
-        temp['users'].append({'user_id': user_i.id, 'about': user_i.about, 'last_online': time.time() - user_i.last_online.timestamp()})
+        temp['users'].append(
+            {'user_id': user_i.id, 'about': user_i.about, 'last_online': time.time() - user_i.last_online.timestamp()})
     return gen_response(temp)
 
 
@@ -78,6 +79,7 @@ def join_cluster():
     db.session.commit()
 
     return gen_response()
+
 
 @bp.route('/set_about', methods=['POST'])
 @limiter.limit("60 per minute")
@@ -199,6 +201,7 @@ def send_chat_message():
 
     return gen_response()
 
+
 @bp.route('/get_tasks', methods=['POST'])
 @limiter.limit("60 per minute")
 @token_required
@@ -237,88 +240,102 @@ def complete_event():
 
 def start_ai(app_context, chat_id, message_id, text):
     with app_context:
-        try:
-            chat = Chat.query.get(chat_id)
-            computers = Message.query.get(message_id).user.cluster.users
-            user_id = Message.query.get(message_id).user.id
+        gen_ai(app_context, chat_id, message_id, text)
 
-            comp_formated = []
-            for i in computers:
-                comp_formated.append(f'ID:{i.id}. Дополнительная информация: {i.about}')
-            comp_formated = '\n'.join(comp_formated)
 
-            prompt = SYSTEM_PROMPT_DEEPSEEK_MAKING + comp_formated
+def gen_ai(app_context, chat_id, message_id, text):
+    chat = Chat.query.get(chat_id)
+    computers = Message.query.get(message_id).user.cluster.users
+    user_id = Message.query.get(message_id).user.id
 
-            hist = [{"role": 'system', "content": prompt}] + get_chat_as_dict(chat, max_messages=10)
+    # Create thinking system prompt
+    computer_info = '\n'.join([f'ID: {i.id}. Дополнительная информация: {i.about}' for i in computers])
+    thinking_prompt = SYSTEM_PROMPT_DEEPSEEK_MAKING + '\n' + computer_info
+    context_history = [{"role": 'system', "content": thinking_prompt}] + get_chat_as_dict(chat, max_messages=10)
 
-            ans = ''
+    max_iterations = 5
+    current_iteration = 0
 
-            while True:
-                actual_hist = hist.copy()
-                if ans != '':
-                    actual_hist.append({"role": 'assistant', "content": ans})
-                response = client.chat.completions.create(model="deepseek-chat", messages=actual_hist, temperature=0.7, stream=False)
-                ai_text = response.choices[0].message.content
-                ans += ai_text
-                code = get_code_from_str(ai_text)
-                code_filtered = extract_code_metadata(code, default_id=user_id)
+    thinking_generated = ''
+    while max_iterations > current_iteration:
+        current_iteration += 1
 
-                task_ids = []
+        print(f'Iteration {current_iteration} started.')
 
-                if len(code_filtered) == 0:
-                    break
+        # Creating dynamic system prompt
+        dynamic_history = context_history.copy()
+        if thinking_generated != '':
+            dynamic_history.append({"role": 'assistant', "content": thinking_generated})
 
-                for i in code_filtered:
-                    task = EventStack(user_id=i[0], chat_id=chat_id, text=i[1])
-                    db.session.add(task)
-                    db.session.flush()
-                    task_ids.append(task.id)
+        # Getting response
+        response = client.chat.completions.create(model="deepseek-chat", messages=dynamic_history, temperature=0.7, stream=False)
+        iteration_generated = response.choices[0].message.content
+        thinking_generated += '\n' + iteration_generated
+
+        # Extracting code
+        code = get_code_from_str(iteration_generated)
+        code_filtered = extract_code_metadata(code, default_id=user_id)
+
+        tasks = []
+
+        if len(code_filtered) == 0:
+            break
+
+        for i in code_filtered:
+            task = EventStack(user_id=i[0], chat_id=chat_id, text=i[1])
+            db.session.add(task)
+            tasks.append(task)
+
+            db.session.commit()
+
+        print(f'Code extracted {len(tasks)} code tasks')
+
+        start_time = time.time()
+        while True:
+            db.session.expire_all()
+
+            elapsed = time.time() - start_time
+            if elapsed > WAITING_FOR_RESPONSE_TIMEOUT:
+                for task in tasks:
+                    task.return_text = 'Code was elapsing for too long.'
+                    task.finished = True
+                db.session.commit()
+                break
+
+
+            tasks_finished = True
+            for task in tasks:
+                if time.time() - task.user.last_online.timestamp() > USER_OFFLINE_TIMEOUT:
+                    task.return_text = 'Target computer was offline.'
+                    task.finished = True
                     db.session.commit()
+                if not task.finished:
+                    tasks_finished = False
 
-                start_time = time.time()
-                while True:
-                    elapsed = time.time() - start_time
-                    if elapsed > WAITING_FOR_RESPONSE_TIMEOUT:
-                        for i in task_ids:
-                            task = EventStack.query.get(i)
-                            task.return_text = 'Code didnt execute. It was elapsing too long.'
-                            task.finished = True
-                        db.session.commit()
-                        break
+            if tasks_finished:
+                print('every task is finished....')
+                break
 
-                    any_task_unfinished = False
-                    for i in task_ids:
-                        db.session.expire_all()
-                        task = EventStack.query.get(i)
-                        if time.time() - task.user.last_online.timestamp() > USER_OFFLINE_TIMEOUT:
-                            task.return_text = 'Code didnt execute. Target computer is offline.'
-                            task.finished = True
-                            db.session.commit()
-                        if not task.finished:
-                            any_task_unfinished = True
+            time.sleep(1)
 
-                    if not any_task_unfinished:
-                        print('some tasks are not finished....')
-                        break
+        thinking_generated += '\n Вот результаты работы:\n'
 
-                    time.sleep(1)
-                for i in task_ids:
-                    task = EventStack.query.get(i)
-                    ans += f'Код для компьютера {task.user.id}. stdout: {task.return_text}\n'
-                ans += 'Все? Если ты все закончил/узнал что надо, не выводи в следующем ответе код. Если можно улучшить результат, можно исполнить еще код.'
-            hist = [{"role": 'system', "content": SYSTEM_PROMPT_DEEPSEEK_ANSWERING}] + hist[1:] + [{"role": 'assistant', "content": 'STARTED THINKING' + ans + 'ENDED THINKING'}]
-            response = client.chat.completions.create(model="deepseek-chat", messages=hist, temperature=1.5, stream=False)
-            ans = ans + '!THINKING!' + response.choices[0].message.content
-            message = Message(chat_id=chat_id, text=ans)
-            db.session.add(message)
-            chat.ready = True
-            db.session.commit()
+        for task in tasks:
+            thinking_generated += f'КОМПЬЮТЕР: {task.user.id}. ВЫВОД: {task.return_text}\n'
+        thinking_generated += '\nВсе? Если тебе больше нечего делать, не выводи код'
 
-        except Exception as e:
-            chat = Chat.query.get(chat_id)
-            chat.ready = True
-            db.session.commit()
+    # Generating answer
+    answer_history = ([{"role": 'system', "content": SYSTEM_PROMPT_DEEPSEEK_ANSWERING}] + context_history[1:] +
+                      [{"role": 'assistant', "content": 'STARTED THINKING' + thinking_generated + 'ENDED THINKING'}])
+    response = client.chat.completions.create(model="deepseek-chat", messages=answer_history, temperature=1.5, stream=False)
+    thinking_generated = thinking_generated + '!THINKING!' + response.choices[0].message.content
 
+    print(f'Final result: {thinking_generated}')
+
+    message = Message(chat_id=chat_id, text=thinking_generated)
+    db.session.add(message)
+    chat.ready = True
+    db.session.commit()
 
 @bp.route('/send_file', methods=['POST'])
 @limiter.limit("60 per minute")

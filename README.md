@@ -48,7 +48,7 @@
 ### Запуск через python
 - Зависимости: client/requirements.txt
 - Для запуска:
-- 
+
 ```bash
 python main.py
 ```

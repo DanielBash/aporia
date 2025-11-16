@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 from dataclasses import dataclass
@@ -13,12 +14,19 @@ class Paths:
 
     def __init__(self):
         if getattr(sys, 'frozen', False):
+            try:
+                base_path = Path(sys._MEIPASS)
+                self.assets_dir = base_path / "assets"
+            except AttributeError:
+                base_path = Path(sys.executable).parent
+                self.assets_dir = base_path / "assets"
             self.root_dir = Path(sys.executable).parent
+            self.data_dir = self.root_dir / "data"
         else:
+            # Development mode
             self.root_dir = Path(__file__).parent
-
-        self.data_dir = self.root_dir / "data"
-        self.assets_dir = self.root_dir / "assets"
+            self.data_dir = self.root_dir / "data"
+            self.assets_dir = self.root_dir / "assets"
 
         self.workspace_dir = self.data_dir / "workspace"
         self.database_dir = self.data_dir / "instance" / 'db.sqlite'
@@ -69,7 +77,11 @@ class Config:
     notification_alive_time = 5
 
     # User settings
-    enable_shortcut = False
+    if os.name == 'nt':
+        enable_shortcut = True
+    else:
+        enable_shortcut = False
+
     tile = 40
     default_chat_name = 'Новый чат'
 

@@ -12,7 +12,6 @@ class TextReq(QDialog):
             Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setGraphicsEffect(None)
         self.conf = conf
 
         self.setStyleSheet(conf.paths.style(self.conf.db.settings['current_theme']))

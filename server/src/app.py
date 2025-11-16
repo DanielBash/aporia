@@ -3,7 +3,6 @@ from models import db, limiter
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-
 SECRET_KEY = 'iBTHuh7BWWXgwBxIZF4T8HMoYuWxD7vQSBaqbzB7n0wQ'
 
 def create_app():
@@ -30,4 +29,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    app.run(debug=False, host='0.0.0.0', port=8080)
